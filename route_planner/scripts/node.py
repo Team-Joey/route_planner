@@ -25,7 +25,8 @@ from 	copy 			import deepcopy
 
 
 class RoutePlannerNode(object):
-	def __init__(self):
+	def __init__(self): # Reni: Indentation in this function was messed up! Tred to fix it, but haven't ran this version --> Have NOT edited other functions.
+		
 		# ----- Minimum change (m/radians) before publishing new estimated pose
 		self._PUBLISH_DELTA = rospy.get_param("publish_delta", 0.1)  
         
@@ -33,32 +34,32 @@ class RoutePlannerNode(object):
 		self._route_planner = route_planner.rp.RoutePlanner()		
 
 		self._latest_scan = None
-        self._last_published_pose = None
-        self._initial_pose_received = False
+        	self._last_published_pose = None
+        	self._initial_pose_received = False
 
-        self._pose_publisher = rospy.Publisher("/estimatedpose", PoseWithCovarianceStamped)
-        #self._amcl_pose_publisher = rospy.Publisher("/amcl_pose",
-        #                                            PoseWithCovarianceStamped)
-        self._tf_publisher = rospy.Publisher("/tf", tfMessage)
+        	self._pose_publisher = rospy.Publisher("/estimatedpose", PoseWithCovarianceStamped)
+        	#self._amcl_pose_publisher = rospy.Publisher("/amcl_pose",
+        	#                                            PoseWithCovarianceStamped)
+        	self._tf_publisher = rospy.Publisher("/tf", tfMessage)
 
-        rospy.loginfo("Waiting for a map...")
-        try:
-            ocuccupancy_map = rospy.wait_for_message("/map", OccupancyGrid, 20)
-        except:
-            rospy.logerr("Problem getting a map. Check that you have a map_server"
+        	rospy.loginfo("Waiting for a map...")
+        		try:
+            	ocuccupancy_map = rospy.wait_for_message("/map", OccupancyGrid, 20)
+        		except:
+            	rospy.logerr("Problem getting a map. Check that you have a map_server"
                      " running: rosrun map_server map_server <mapname> " )
-            sys.exit(1)
-        rospy.loginfo("Map received. %d X %d, %f px/m." %
+            	sys.exit(1)
+        	rospy.loginfo("Map received. %d X %d, %f px/m." %
                       (ocuccupancy_map.info.width, ocuccupancy_map.info.height,
                        ocuccupancy_map.info.resolution))
 		#self._kalman_filter.set_map(ocuccupancy_map)
-        self._laser_subscriber = rospy.Subscriber("/base_scan", LaserScan,
+        	self._laser_subscriber = rospy.Subscriber("/base_scan", LaserScan,
                                                   self._laser_callback,
                                                   queue_size=1)
-        self._initial_pose_subscriber = rospy.Subscriber("/initialpose",
+        	self._initial_pose_subscriber = rospy.Subscriber("/initialpose",
                                                          PoseWithCovarianceStamped,
                                                          self._initial_pose_callback)
-        self._odometry_subscriber = rospy.Subscriber("/odom", Odometry,
+        	self._odometry_subscriber = rospy.Subscriber("/odom", Odometry,
                                                      self._odometry_callback,
                                                      queue_size=1)
 
