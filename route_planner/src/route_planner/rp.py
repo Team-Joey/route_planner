@@ -35,3 +35,32 @@ class RoutePlanner(object):
 
 	print("The sum of ", a, " and ", b," is ", a+b)
 
+#------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
+
+    def set_map(self, occupancy_map):
+        """Set the map"""
+        raise NotImplementedError()
+
+    def A_star(self, start_position, target_position):
+        """ 
+	Find shortest path from a given start position to 
+	a given target position (using A* algorithm)
+	Return: Array of coordinates the robot would visit
+	"""
+        raise NotImplementedError()
+
+    def find_coordinate(self, product):			# Might need more arguments
+        """ 
+	Find the coordinate of the given product
+	using the map
+	Return: coordinates of the product
+	"""
+        raise NotImplementedError()
+
+    def sort(self, products_array):
+        """
+	This function sorts the array of products in some order
+	Returns: sorted products_array
+	"""
+        raise NotImplementedError()
+

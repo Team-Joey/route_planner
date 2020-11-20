@@ -27,6 +27,30 @@ class RoutePlannerNode(object):
         self._tf_publisher = rospy.Publisher("/tf", tfMessage, queue_size=1)			# Publishes tf message for debugging
 
 	# ----- Then set the occupancy grid map
+	""" 
+	TO DO: 
+	1. Uncomment the commented imports.
+	2. set the occupancy grid map
+	3. Define laser and odometry callback functions 
+	4. Subscribe to /base_scan (lasers) and /odom (odometry)
+	"""
+
+#------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
+    def _odometry_callback(self, odometry):
+        """
+	Function is called when a laser scan is received. 
+	This function is activated by a subscriber to /odom
+	in the kf node.py
+        """
+        raise NotImplementedError()
+
+    def _laser_callback(self, scan):
+        """
+	Function is called when a laser scan is received. 
+	This function is activated by a subscriber to /base_scan
+	in the kf node.py
+        """
+        raise NotImplementedError()
 
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
