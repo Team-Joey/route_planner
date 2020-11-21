@@ -7,8 +7,8 @@ import 	route_planner.rp
 import 	sys
 from 	geometry_msgs.msg 	import PoseStamped
 from 	tf.msg 			import tfMessage
-# from 	sensor_msgs.msg 	import LaserScan
-# from 	nav_msgs.msg 		import OccupancyGrid, Odometry
+from 	sensor_msgs.msg 	import LaserScan
+from 	nav_msgs.msg 		import OccupancyGrid, Odometry
 
 
 class RoutePlannerNode(object):
@@ -25,35 +25,44 @@ class RoutePlannerNode(object):
 
 	# robot name is a unique identifier e.g. robot_0, robot_1 etc
 	current_pose_topic = robotname + "/current_pose"
+	base_scan_topic = robotname + "/base_scan"
+	odom_topic = robotname + "/odom"
 	
 	self._pose_publisher = rospy.Publisher(current_pose_topic, PoseStamped, queue_size=1)	# Publishes the position of the robot for visualisaion
 	self._tf_publisher = rospy.Publisher("/tf", tfMessage, queue_size=1)			# Publishes tf message for debugging
 
+	# subscribe to the odom and laser topics for this robot
+	rospy.Subscriber(base_scan_topic, LaserScan, self._route_planner._laser_callback)
+	rospy.Subscriber(odom_topic, Odometry, self._route_planner._odometry_callback)
+
 	# ----- Then set the occupancy grid map
 	""" 
 	TO DO: 
-	1. Uncomment the commented imports.
+	1. Uncomment the commented imports. - done
 	2. set the occupancy grid map
-	3. Define laser and odometry callback functions 
-	4. Subscribe to /base_scan (lasers) and /odom (odometry)
+	3. Define laser and odometry callback functions - done
+	4. Subscribe to /base_scan (lasers) and /odom (odometry) - done
 	"""
 
 #------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
-    def _odometry_callback(self, odometry):
+
+	#NOTE: I have moved these functions into rp.py so that each robot calls separate instances of the functions
+
+    #def _odometry_callback(self, odometry):
         """
 	Function is called when a laser scan is received. 
 	This function is activated by a subscriber to /odom
 	in the kf node.py
         """
-        raise NotImplementedError()
+    #    raise NotImplementedError()
 
-    def _laser_callback(self, scan):
+    #def _laser_callback(self, scan):
         """
 	Function is called when a laser scan is received. 
 	This function is activated by a subscriber to /base_scan
 	in the kf node.py
         """
-        raise NotImplementedError()
+    #    raise NotImplementedError()
 
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':

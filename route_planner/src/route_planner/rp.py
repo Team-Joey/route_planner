@@ -37,6 +37,12 @@ class RoutePlanner(object):
 
 #------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
 
+    def _odometry_callback(self, odometry):
+    	print("recieving odom")
+
+    def _laser_callback(self, scan):
+    	print("recieving scan")
+
     def set_map(self, occupancy_map):
         """Set the map"""
         raise NotImplementedError()
