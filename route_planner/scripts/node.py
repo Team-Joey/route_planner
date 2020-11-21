@@ -12,7 +12,7 @@ from 	tf.msg 			import tfMessage
 
 
 class RoutePlannerNode(object):
-    def __init__(self):
+    def __init__(self, robotname):
 	rospy.loginfo("Node initialisation...") 				# Information is only logged after a node instance has been created
 
 	# ----- Minimum change DELTA before publishing a pose
@@ -21,10 +21,13 @@ class RoutePlannerNode(object):
 	self._route_planner.dummy_function_sum(3, 4)				# Accessing a function in the script
 
 	self._latest_scan = None
-        self._last_published_pose = None
+	self._last_published_pose = None
+
+	# robot name is a unique identifier e.g. robot_0, robot_1 etc
+	current_pose_topic = robotname + "/current_pose"
 	
-	self._pose_publisher = rospy.Publisher("/current_pose", PoseStamped, queue_size=1)	# Publishes the position of the robot for visualisaion
-        self._tf_publisher = rospy.Publisher("/tf", tfMessage, queue_size=1)			# Publishes tf message for debugging
+	self._pose_publisher = rospy.Publisher(current_pose_topic, PoseStamped, queue_size=1)	# Publishes the position of the robot for visualisaion
+	self._tf_publisher = rospy.Publisher("/tf", tfMessage, queue_size=1)			# Publishes tf message for debugging
 
 	# ----- Then set the occupancy grid map
 	""" 
@@ -56,10 +59,20 @@ class RoutePlannerNode(object):
 if __name__ == '__main__':
     rospy.init_node('dummy_node', anonymous = True) 	# (anonymous = True) ensures the name is unique for each node 
     rospy.loginfo("Creating the node instance...")
-    node = RoutePlannerNode() 				# Node initialisation
-    
+
+    # get all published topics
+    # find how many robots are active
+    # create that many nodes
+    topics = rospy.get_published_topics()
+    robotnum = 0
+    for i in range(0, len(topics)):
+    	if ("odom" in topics[i][0]):
+    		RoutePlannerNode("robot_"+str(robotnum)) # Node initialisation
+    		robotnum+=1
+
+
     task_incomplete = True
-    while task_incomplete:				# Node is active until the task has been completed
-	rospy.spin()
+    #while task_incomplete:				# Node is active until the task has been completed
+    rospy.spin()
     rospy.loginfo("Task has been completed.")
     print("End.")
