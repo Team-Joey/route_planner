@@ -70,9 +70,11 @@ if __name__ == '__main__':
     		RoutePlannerNode("robot_"+str(robotnum)) # Node initialisation
     		robotnum+=1
 
-
-    task_incomplete = True
-    #while task_incomplete:				# Node is active until the task has been completed
-    rospy.spin()
-    rospy.loginfo("Task has been completed.")
-    print("End.")
+    if (robotnum > 0):
+    	task_incomplete = True
+    	#while task_incomplete:				# Node is active until the task has been completed
+    	rospy.spin()
+    	rospy.loginfo("Task has been completed.")
+    	print("End.")
+    else:
+    	print("No robots found")
