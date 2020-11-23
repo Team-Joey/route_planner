@@ -1,39 +1,45 @@
 #!/usr/bin/python
 
 """
-This is the main entry point for the Kalman filter exercise node. It
+This is the main entry point for the particle filter exercise node. It
 subscribes to laser, map, and odometry and creates an instance of
-kf.KFLocaliser() to do the localisation.
+pf.PFLocaliser() to do the localisation.
 """
 
-import 	rospy
-import 	kf_localisation
-import 	kf_localisation.kf
-from 	kf_localisation.util 	import *
-from 	geometry_msgs.msg 	import ( PoseStamped, PoseWithCovarianceStamped,
+import rospy
+import pf_localisation.pf
+from pf_localisation.util import *
+
+from geometry_msgs.msg import ( PoseStamped, PoseWithCovarianceStamped,
                                 PoseArray, Quaternion )
-from 	tf.msg 			import tfMessage
-from 	sensor_msgs.msg 	import LaserScan
-from 	nav_msgs.msg 		import OccupancyGrid, Odometry
-from 	threading 		import Lock
+from tf.msg import tfMessage
+from sensor_msgs.msg import LaserScan
+from nav_msgs.msg import OccupancyGrid, Odometry
+import pf_localisation
+from threading import Lock
 
-import 	sys
-from 	copy 			import deepcopy
+import sys
+from copy import deepcopy
 
-class KalmanFilterLocalisationNode(object):
+# TEST IMPORT
+import numpy as np
+from PIL import Image
+
+class ParticleFilterLocalisationNode(object):
     def __init__(self):
-        # ----- Minimum change (m/radians) before publishing new estimated pose
+        # ----- Minimum change (m/radians) before publishing new particle cloud and pose
         self._PUBLISH_DELTA = rospy.get_param("publish_delta", 0.1)  
         
-        self._kalman_filter = kf_localisation.kf.KFLocaliser()
+        self._particle_filter = pf_localisation.pf.PFLocaliser()
 
         self._latest_scan = None
         self._last_published_pose = None
         self._initial_pose_received = False
 
-        self._pose_publisher = rospy.Publisher("/estimatedpose", PoseWithCovarianceStamped)
+        self._pose_publisher = rospy.Publisher("/estimatedpose", PoseStamped)
         self._amcl_pose_publisher = rospy.Publisher("/amcl_pose",
                                                     PoseWithCovarianceStamped)
+        self._cloud_publisher = rospy.Publisher("/particlecloud", PoseArray)
         self._tf_publisher = rospy.Publisher("/tf", tfMessage)
 
         rospy.loginfo("Waiting for a map...")
@@ -46,7 +52,76 @@ class KalmanFilterLocalisationNode(object):
         rospy.loginfo("Map received. %d X %d, %f px/m." %
                       (ocuccupancy_map.info.width, ocuccupancy_map.info.height,
                        ocuccupancy_map.info.resolution))
-        self._kalman_filter.set_map(ocuccupancy_map)
+
+        # ---------- TEST ----------
+
+        inGrid = list(ocuccupancy_map.data)
+        gridAsListOfLists = []
+        #0 = white, 100 = black, -1 = grey
+        
+        for row in range(0,602):
+        	temprow = []
+        	for col in range(0,602):
+        		element = inGrid.pop(0)
+        		temprow.append(element)
+        	gridAsListOfLists.append(temprow)
+
+        #Reduced dimensions, more prime factors, different options of resolution reduction
+        gridAsArray = np.asarray(gridAsListOfLists)
+        gridAsArray = np.delete(gridAsArray,0,0)
+        gridAsArray = np.delete(gridAsArray,0,1)
+        gridAsArray = np.delete(gridAsArray,600,0)
+        gridAsArray = np.delete(gridAsArray,600,1)
+
+        lowerResGridAsListOfLists = []
+        lowerResGridColorsAsListOfLists = []
+        
+        for i in range(0,600,4):
+            lowResRow = []
+            lowResRowColors = []
+            for j in range(0,600,4):
+                nW = 0
+                nB = 0
+                nG = 0
+                for x in range(0,4):
+                    for y in range(0,4):
+                        if gridAsArray[j+x][i+y] == -1:
+						    nG += 1
+                        elif gridAsArray[j+x][i+y] == 0:
+                            nW += 1
+                        elif gridAsArray[j+x][i+y] == 100:
+                            nB += 1
+                colorValues = [nW,nB,nG]
+                maxN = max(colorValues)
+                maxIndex = colorValues.index(maxN)
+                if maxIndex == 0:
+                    lowResRow.append(0)
+                    lowResRowColors.append(1)
+                elif maxIndex == 1:
+                    lowResRow.append(100)
+                    lowResRowColors.append(0)
+                elif maxIndex == 2:
+                    lowResRow.append(-1)
+                    lowResRowColors.append(0.5)
+            lowerResGridAsListOfLists.append(lowResRow)
+            lowerResGridColorsAsListOfLists.append(lowResRowColors)
+
+        lowResGridAsArray = np.asarray(lowerResGridAsListOfLists)
+        lowResGridColorsAsArray = np.asarray(lowerResGridColorsAsListOfLists)
+
+        print(lowResGridColorsAsArray.shape)
+
+        img = Image.fromarray(np.uint8(lowResGridColorsAsArray * 255) , 'L')
+        img.save('test.png')
+
+        lowResGridColorsAsArray2 = np.rot90(lowResGridColorsAsArray)
+
+        print(lowResGridColorsAsArray == lowResGridColorsAsArray2)
+
+        img = Image.fromarray(np.uint8(lowResGridColorsAsArray2 * 255) , 'L')
+        img.save('test2.png')
+
+        self._particle_filter.set_map(ocuccupancy_map)
         
         self._laser_subscriber = rospy.Subscriber("/base_scan", LaserScan,
                                                   self._laser_callback,
@@ -60,11 +135,10 @@ class KalmanFilterLocalisationNode(object):
 
     def _initial_pose_callback(self, pose):
         """ called when RViz sends a user supplied initial pose estimate """
-        self._kalman_filter.set_initial_pose(pose)
-        self._last_published_pose = deepcopy(self._kalman_filter.estimatedpose)
+        self._particle_filter.set_initial_pose(pose)
+        self._last_published_pose = deepcopy(self._particle_filter.estimatedpose)
         self._initial_pose_received = True
-	
-	self._pose_publisher.publish(self._kalman_filter.estimatedpose)
+        self._cloud_publisher.publish(self._particle_filter.particlecloud)
 
     def _odometry_callback(self, odometry):
         """
@@ -73,11 +147,12 @@ class KalmanFilterLocalisationNode(object):
         the latest laser.
         """
         if self._initial_pose_received:
-            t_odom = self._kalman_filter.predict_from_odometry(odometry)
-            t_filter = self._kalman_filter.update_filter(self._latest_scan)
+            t_odom = self._particle_filter.predict_from_odometry(odometry)
+            t_filter = self._particle_filter.update_filter(self._latest_scan)
             if t_odom + t_filter > 0.1:
                 rospy.logwarn("Filter cycle overran timeslot")
                 rospy.loginfo("Odometry update: %fs"%t_odom)
+                rospy.loginfo("Particle update: %fs"%t_filter)
     
     def _laser_callback(self, scan):
         """
@@ -86,20 +161,22 @@ class KalmanFilterLocalisationNode(object):
         """
         self._latest_scan = scan
         if self._initial_pose_received:
-            if  self._sufficientMovementDetected(self._kalman_filter.estimatedpose):
+            if  self._sufficientMovementDetected(self._particle_filter.estimatedpose):
                 # ----- Publish the new pose
-                self._amcl_pose_publisher.publish(self._kalman_filter.estimatedpose)
-                estimatedpose =  PoseWithCovarianceStamped()
-                estimatedpose.pose.pose = self._kalman_filter.estimatedpose.pose.pose
-		estimatedpose.pose.covariance = self._kalman_filter.estimatedpose.pose.covariance
+                self._amcl_pose_publisher.publish(self._particle_filter.estimatedpose)
+                estimatedpose =  PoseStamped()
+                estimatedpose.pose = self._particle_filter.estimatedpose.pose.pose
                 estimatedpose.header.frame_id = "map"
                 self._pose_publisher.publish(estimatedpose)
                 
                 # ----- Update record of previously-published pose
-                self._last_published_pose = deepcopy(self._kalman_filter.estimatedpose)
+                self._last_published_pose = deepcopy(self._particle_filter.estimatedpose)
+        
+                # ----- Get updated particle cloud and publish it
+                self._cloud_publisher.publish(self._particle_filter.particlecloud)
         
                 # ----- Get updated transform and publish it
-                self._tf_publisher.publish(self._kalman_filter.tf_message)
+                self._tf_publisher.publish(self._particle_filter.tf_message)
     
     def _sufficientMovementDetected(self, latest_pose):
         """
@@ -128,6 +205,6 @@ class KalmanFilterLocalisationNode(object):
 
 if __name__ == '__main__':
     # --- Main Program  ---
-    rospy.init_node("kf_localisation")
-    node = KalmanFilterLocalisationNode()
+    rospy.init_node("pf_localisation")
+    node = ParticleFilterLocalisationNode()
     rospy.spin()
