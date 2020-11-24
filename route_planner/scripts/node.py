@@ -13,7 +13,7 @@ from 	geometry_msgs.msg 	import Twist
 
 
 class RoutePlannerNode(object):
-	def __init__(self, robotname):
+	def __init__(self, robotname, placeholder_shopping_list):
 		rospy.loginfo("Node initialisation...") 				# Information is only logged after a node instance has been created
 
 		# ----- Minimum change DELTA before publishing a pose
@@ -31,11 +31,7 @@ class RoutePlannerNode(object):
 		self._tf_publisher = rospy.Publisher("/tf", tfMessage, queue_size=1)			# Publishes tf message for debugging
 		self._cmd_vel = rospy.Publisher(cmd_vel, Twist, queue_size=100)				# Publishes tf message for debugging
 		
-		self._route_planner = route_planner.rp.RoutePlanner(self._cmd_vel)
-		if self._cmd_vel == None:
-			print("_cmd_vel is NONE ")
-			return
-		self._route_planner._cmd_vel = self._cmd_vel
+		self._route_planner = route_planner.rp.RoutePlanner(self._cmd_vel, placeholder_shopping_list)
 
 		# subscribe to the odom and laser topics for this robot
 		rospy.Subscriber(base_scan_topic, LaserScan, self._route_planner._laser_callback)
@@ -75,6 +71,7 @@ if __name__ == '__main__':
 	rospy.init_node('dummy_node', anonymous = True) 	# (anonymous = True) ensures the name is unique for each node 
 	rospy.loginfo("Creating the node instance...")
 
+	placeholder_shopping_list = []
 	# get all published topics
 	# find how many robots are active
 	topics = rospy.get_published_topics()
@@ -87,9 +84,9 @@ if __name__ == '__main__':
 	# if only one robot, do not index the name
 	for i in range(0, robotnum):
 		if robotnum == 1:
-			RoutePlannerNode("")
+			RoutePlannerNode("", placeholder_shopping_list)
 		else: 
-			RoutePlannerNode("robot_"+str(i))
+			RoutePlannerNode("robot_"+str(i), placeholder_shopping_list)
 
 	if (robotnum > 0):
 		task_incomplete = True
