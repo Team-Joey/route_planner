@@ -28,7 +28,7 @@ class RoutePlanner(object):
 		self.current_pose.pose.orientation = rotateQuaternion(Quaternion(w=1.0),
 																	self.START_HEADING)
 		self.current_pose.header.frame_id = "/map"
-		self.path_to_next_item = []
+		self.path_to_next_item = [[1,-1], [2,-1], [2,0]]
 
 		self._cmd_vel = _cmd_vel
 		self.test = False
@@ -38,6 +38,10 @@ class RoutePlanner(object):
 		# if the difference between two angles is less than this threshold, robot will slow down rot speed
 		self.rotation_slow_threshold = 0.5
 		self.angularSpeed = 10
+
+		# if the distance to next position in the path is less than this value, robot will slow down
+		self.movement_slow_threshold = 0.25
+		self.linearSpeed = 10
 
 #--------------------------------Dummy-------------------------------------------------------------------------------------------------------------------
 
@@ -57,33 +61,47 @@ class RoutePlanner(object):
 		If the robot's task list is not empty, the function
 		checks if it is close enough. then updates target.
 		"""
-		current_target = [1, -1]
-		base_data = Twist()
 		self.current_pose = odometry.pose
-		if self.test: 
-			return
-		if len(self.path_to_next_item) > 0: # change to == 0
-			#wait
-			print("Not waiting :P.")
+
+		if len(self.path_to_next_item) == 0: 
+			print("Finished path, either we are done or need to get path to next item")
+
 		else:
+
+			current_target = self.path_to_next_item[0]
+
 			if(self.close_enough(current_target[0], current_target[1])):
 				# ---- Remove target from array --> next element becomes the 1st
-				self.path_to_next_item.remove(self.current_target)
+
+				self.path_to_next_item.remove(current_target)
+				print("Rached position ", current_target)
+
 				if len(self.path_to_next_item) > 0:
 					# ---- Change target and remove it from task list
-					self.current_target = self.path_to_next_item[0]
-				else:	
-					print("len is zero. (in odom_callback) ")
-					return
-					# Go to next shopping item
-				
+					current_target = self.path_to_next_item[0]
 			else: 
-				# ---- Move the robot forward (towards the target) 
-				base_data.linear.x = 0.1
+				# ---- Move/rotate the robot towards the target
 				if self.rotate_to_target(current_target[0], current_target[1]):	
-					self.test = True
+					self.move_to_target(current_target[0], current_target[1])
 
-			#print("Received odometry.")
+
+#----------------------------------------------------------------------------------------------------------------------------------
+	def move_to_target(self, x, y):
+		"""
+		Moves robot forward until the given position has been reached
+		"""
+		base_data = Twist()
+
+		# get distance between current position and target
+		distance = math.sqrt( (x - self.current_pose.pose.position.x)**2 + (y - self.current_pose.pose.position.y)**2 )
+
+		speedmodifier = 1
+
+		if (distance < self.movement_slow_threshold):
+			speedmodifier = speedmodifier * distance 
+
+		base_data.linear.x = self.linearSpeed * speedmodifier
+		self._cmd_vel.publish( base_data )
 
 #----------------------------------------------------------------------------------------------------------------------------------
 	def rotate_to_target(self, x, y):
@@ -122,6 +140,8 @@ class RoutePlanner(object):
 		direction of that angle. 
 		If waittilldone is True rospy will wait for the rotation to be completed. 
 		Else, the rotation might not be completed in this call.
+
+		Returns true if the angle has been achieved.
 		"""
 		self.rotation = self.current_pose.pose.orientation
 		
