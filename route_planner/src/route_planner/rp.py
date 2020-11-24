@@ -10,11 +10,11 @@ import 	route_planner.movement
 
 
 class RoutePlanner(object):
-	START_X = 0
-	START_Y = 0
-	START_Z = 0
-	START_HEADING = 0
-	EPHSILON = 0.3
+
+	#START_X = 0
+	#START_Y = 0
+	#START_Z = 0
+	#START_HEADING = 0
 
 	def __init__(self, _cmd_vel, shopping_list):
 		rospy.loginfo("A route planner object was created.")
@@ -23,11 +23,12 @@ class RoutePlanner(object):
 		self.tf_message = tfMessage()				# tf message for debugging
 
 	# ---- Setting the current pose based on the given starting point 
-		self.current_pose.pose.position.x = self.START_X
-		self.current_pose.pose.position.y = self.START_Y
-		self.current_pose.pose.position.z = self.START_Z
-		self.current_pose.pose.orientation = rotateQuaternion(Quaternion(w=1.0),
-																	self.START_HEADING)
+	#NOTE- this stuff is not needed, because the odom call back deals with this, commented for now
+		#self.current_pose.pose.position.x = self.START_X
+		#self.current_pose.pose.position.y = self.START_Y
+		#self.current_pose.pose.position.z = self.START_Z
+		#self.current_pose.pose.orientation = rotateQuaternion(Quaternion(w=1.0),
+																	#self.START_HEADING)
 		self.current_pose.header.frame_id = "/map"
 
 		self.path_to_next_item = [[1,-1], [2,-1], [2,0]]
@@ -46,6 +47,7 @@ class RoutePlanner(object):
 		self.movement_slow_threshold = 0.25
 		self.linearSpeed = 10
 
+		# create a movement object which will handle all translation and rotation of the robot
 		self.movement = route_planner.movement.Movement(_cmd_vel)
 
 #--------------------------------Dummy-------------------------------------------------------------------------------------------------------------------
