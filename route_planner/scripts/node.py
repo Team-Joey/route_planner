@@ -10,8 +10,13 @@ from 	tf.msg 			import tfMessage
 from 	sensor_msgs.msg 	import LaserScan
 from 	nav_msgs.msg 		import OccupancyGrid, Odometry
 from 	geometry_msgs.msg 	import Twist
+from 	visualization_msgs.msg import Marker
+from 	visualization_msgs.msg import MarkerArray
+import 	route_planner.map_grid
 
 ROBOTS = []
+MARKER_PUB = None
+MAP_GRID = None
 
 class RoutePlannerNode(object):
 	def __init__(self, robotname, placeholder_shopping_list):
@@ -21,6 +26,7 @@ class RoutePlannerNode(object):
 		self._PUBLISH_DELTA = rospy.get_param("publish_delta", 0.1)
 		self._latest_scan = None
 		self._last_published_pose = None
+		self.name = robotname
 
 		# robot name is a unique identifier e.g. robot_0, robot_1 etc
 		current_pose_topic = robotname + "/current_pose"
@@ -38,26 +44,76 @@ class RoutePlannerNode(object):
 		rospy.Subscriber(base_scan_topic, LaserScan, self._route_planner._laser_callback)
 		rospy.Subscriber(odom_topic, Odometry, self._route_planner._odometry_callback)
 
-		# ----- Then set the occupancy grid map
-		rospy.loginfo("Waiting for a map...")
-    		try:
-			ocuccupancy_map = rospy.wait_for_message("/map", OccupancyGrid, 20)
-		except:
-			rospy.logerr("Problem getting a map. Check that you have a map_server"
-                 			" running: rosrun map_server map_server <mapname> " )
-			sys.exit(1)
-		
-		rospy.loginfo("Map received. %d X %d, %f m/px." % (ocuccupancy_map.info.width, ocuccupancy_map.info.height, ocuccupancy_map.info.resolution))
-		self._route_planner.set_map(ocuccupancy_map)
-
+# called every x times a second
 def update():
+	# array of markers to diplay in rviz, includes robots and food items
+	markers = []
+
+	# MAP_GRID probably needs to be updated here
+	# MAP_GRID = update_map_grid()
+
+	id = 0
 	for robot in ROBOTS:
-		print("Robot position: (" + str(robot._route_planner.current_pose.pose.position.x) + ", " + str(robot._route_planner.current_pose.pose.position.x) + ")")
+		# potentially should only call this function if the map has actually changed
+		robot._route_planner.receive_map_update(MAP_GRID)
+
+		# create a marker for the robot and append to marker array
+		markers.append(create_robot_marker(robot, id))
+
+		id += 1
+
+	MARKER_PUB.publish(markers)
+
+def create_robot_marker(robot, id):
+	robotMarker = Marker()
+	robotMarker.header.frame_id = "/map"
+	robotMarker.header.stamp    = rospy.get_rostime()
+	robotMarker.ns = robot.name
+	robotMarker.id = id
+	robotMarker.type = 2 # sphere
+	robotMarker.action = 0
+
+	robotMarker.pose = robot._route_planner.current_pose.pose
+
+	# need to add offset to marker position
+	robotMarker.pose.position.x = robotMarker.pose.position.x + MAP_GRID.origin_x
+	robotMarker.pose.position.y = robotMarker.pose.position.y + MAP_GRID.origin_y
+
+	robotMarker.lifetime = rospy.Duration(0)
+	
+	robotMarker.scale.x = 1.0
+	robotMarker.scale.y = 1.0
+	robotMarker.scale.z = 1.0
+
+	robotMarker.color.r = 0.0
+	robotMarker.color.g = 1.0
+	robotMarker.color.b = 0.0
+	robotMarker.color.a = 1.0
+
+	return robotMarker
+
+def set_map(occupancy_map):
+	"""Set the map"""
+	MAP_GRID.set_map(occupancy_map)
 
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
 	rospy.init_node('Joey', anonymous = True) 	# (anonymous = True) ensures the name is unique for each node 
 	rospy.loginfo("Creating the node instance...")
+
+	# ----- Then set the occupancy grid map
+	rospy.loginfo("Waiting for a map...")
+	try:
+		ocuccupancy_map = rospy.wait_for_message("/map", OccupancyGrid, 20)
+	except:
+		rospy.logerr("Problem getting a map. Check that you have a map_server"
+						" running: rosrun map_server map_server <mapname> " )
+		sys.exit(1)
+	
+	rospy.loginfo("Map received. %d X %d, %f m/px." % (ocuccupancy_map.info.width, ocuccupancy_map.info.height, ocuccupancy_map.info.resolution))
+	MAP_GRID =  route_planner.map_grid.MapGrid()
+	set_map(ocuccupancy_map)
+
 
 	placeholder_shopping_list = []
 	# get all published topics
@@ -78,6 +134,8 @@ if __name__ == '__main__':
 
 	if (robotnum > 0):
 		task_incomplete = True
+
+		MARKER_PUB = rospy.Publisher('markers', MarkerArray, queue_size=10)
 
 		while (task_incomplete):
 			update()

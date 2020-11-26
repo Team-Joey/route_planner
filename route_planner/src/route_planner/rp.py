@@ -7,7 +7,6 @@ from 	geometry_msgs.msg 	import Twist
 import 	math
 from 	math 			import cos, sin
 import 	route_planner.movement
-import 	map_grid
 
 class N:
 	def __init__(self, p):
@@ -34,15 +33,17 @@ class RoutePlanner(object):
 
 		self._cmd_vel = _cmd_vel
 
-		# create a movement object which will handle all translation and rotation of the robot
+		# create a movement object set_mapwhich will handle all translation and rotation of the robot
 		self.movement = route_planner.movement.Movement(_cmd_vel)
 
 		self.current_pose.header.frame_id = "/map"
-        	# ----- Sensor model
-	    	self.map_grid =  map_grid.MapGrid()
-
 
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
+
+	def receive_map_update(self, map_grid):
+		# do something
+		x = 0
+
 
 	def _odometry_callback(self, odometry):
 		"""
@@ -129,13 +130,6 @@ class RoutePlanner(object):
 		            self.currentN.neighbours(n).parent = self.currentN
 		            self.currentN.neighbours(n).lDist = self.possiblyLowerDist
 		            self.currentN.neighbours(n).gDist = self.currentN.neighbours(n).lDist + heuristic(self.currentN.neighbours(n).p, target_position)
-
-
-
-	def set_map(self, occupancy_map):
-		"""Set the map"""
-		self.map_grid.set_map(occupancy_map)
-
 
 #------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
 	def _laser_callback(self, scan):
