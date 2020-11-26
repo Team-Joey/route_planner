@@ -52,7 +52,7 @@ window
 (
   size [ 1000 600 ]
 
-  rotate [ 90.000 811.500 ]
+  rotate [ 0.000 813.500 ]
   scale 20.000
 )
 
@@ -67,5 +67,5 @@ floorplan
 
 # throw in a robot
 pioneer( pose [ 0.000 0.000 0.000 165.245 ] name "robot" color "blue")
-pioneer( pose [ 1.000 1.000 0.000 165.245 ] name "robot" color "green")
+#pioneer( pose [ 1.000 1.000 0.000 165.245 ] name "robot" color "green")
 block( pose [ -13.000 2.000 0.000 180.000 ] color "red")
