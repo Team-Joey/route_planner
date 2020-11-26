@@ -58,12 +58,15 @@ def update():
 		robot._route_planner.receive_map_update(MAP_GRID)
 
 		# create a marker for the robot and append to marker array
-		markers.append(create_robot_marker(robot, id))
+		markers += (create_robot_marker(robot, id))
+		#markers.append(create_robot_marker(robot, id))
 
-		id += 1
+		# + 2 because two markers are created- shape and text
+		id += 2
 
 	MARKER_PUB.publish(markers)
 
+# returns an array containing a shape marker and a text marker
 def create_robot_marker(robot, id):
 	robotMarker = Marker()
 	robotMarker.header.frame_id = "/map"
@@ -76,8 +79,8 @@ def create_robot_marker(robot, id):
 	robotMarker.pose = robot._route_planner.current_pose.pose
 
 	# need to add offset to marker position
-	robotMarker.pose.position.x = robotMarker.pose.position.x + MAP_GRID.origin_x
-	robotMarker.pose.position.y = robotMarker.pose.position.y + MAP_GRID.origin_y
+	robotMarker.pose.position.x = robot._route_planner.current_pose.pose.position.x + MAP_GRID.origin_x
+	robotMarker.pose.position.y = robot._route_planner.current_pose.pose.position.y + MAP_GRID.origin_y
 
 	robotMarker.lifetime = rospy.Duration(0)
 	
@@ -90,7 +93,37 @@ def create_robot_marker(robot, id):
 	robotMarker.color.b = 0.0
 	robotMarker.color.a = 1.0
 
-	return robotMarker
+
+	robotMarkerText = Marker()
+	robotMarkerText.header.frame_id = "/map"
+	robotMarkerText.header.stamp    = rospy.get_rostime()
+	robotMarkerText.ns = robot.name + "_text"
+
+	robotMarkerText.id = id + 1
+	robotMarkerText.type = Marker.TEXT_VIEW_FACING#2 # sphere
+	robotMarkerText.action = 0
+	robotMarkerText.text=robot.name
+
+	# for some reason the text marker doesn't need offsetting with origin, not sure why...
+	robotMarkerText.pose.position.x = robot._route_planner.current_pose.pose.position.x #+ MAP_GRID.origin_x
+	robotMarkerText.pose.position.y = robot._route_planner.current_pose.pose.position.y #+ MAP_GRID.origin_y
+	# give z of 2 so the text is above other markers
+	robotMarkerText.pose.position.z = 2
+
+	robotMarkerText.lifetime = rospy.Duration(0)
+	
+	robotMarkerText.scale.x = 1.0
+	robotMarkerText.scale.y = 1.0
+	robotMarkerText.scale.z = 1.0
+
+	robotMarkerText.color.r = 0.0
+	robotMarkerText.color.g = 0.0
+	robotMarkerText.color.b = 1.0
+	robotMarkerText.color.a = 1.0
+
+
+
+	return [robotMarker, robotMarkerText]
 
 def set_map(occupancy_map):
 	"""Set the map"""
