@@ -11,6 +11,7 @@ from 	sensor_msgs.msg 	import LaserScan
 from 	nav_msgs.msg 		import OccupancyGrid, Odometry
 from 	geometry_msgs.msg 	import Twist
 
+ROBOTS = []
 
 class RoutePlannerNode(object):
 	def __init__(self, robotname, placeholder_shopping_list):
@@ -49,7 +50,9 @@ class RoutePlannerNode(object):
 		rospy.loginfo("Map received. %d X %d, %f m/px." % (ocuccupancy_map.info.width, ocuccupancy_map.info.height, ocuccupancy_map.info.resolution))
 		self._route_planner.set_map(ocuccupancy_map)
 
-
+def update():
+	for robot in ROBOTS:
+		print("Robot position: (" + str(robot._route_planner.current_pose.pose.position.x) + ", " + str(robot._route_planner.current_pose.pose.position.x) + ")")
 
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
@@ -69,14 +72,17 @@ if __name__ == '__main__':
 	# if only one robot, do not index the name
 	for i in range(0, robotnum):
 		if robotnum == 1:
-			RoutePlannerNode("", placeholder_shopping_list)
+			ROBOTS.append(RoutePlannerNode("", placeholder_shopping_list))
 		else: 
-			RoutePlannerNode("robot_"+str(i), placeholder_shopping_list)
+			ROBOTS.append(RoutePlannerNode("robot_"+str(i), placeholder_shopping_list))
 
 	if (robotnum > 0):
 		task_incomplete = True
-		#while task_incomplete:				# Node is active until the task has been completed
-		rospy.spin()
+
+		while (task_incomplete):
+			update()
+			rospy.sleep(0.01)
+
 		rospy.loginfo("Task has been completed.")
 		print("End.")
 	else:
