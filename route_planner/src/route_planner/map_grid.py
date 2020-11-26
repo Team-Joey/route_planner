@@ -66,7 +66,7 @@ class MapGrid(object):
 		lowerResGridColorsAsListOfLists = []
 
 		scaleFactor = 1
-		openNodes = []
+		self.openNodes = []
 
 		for i in range(0,600,scaleFactor):
 				lowResRow = []
@@ -80,7 +80,7 @@ class MapGrid(object):
 							if gridAsArray[j+x][i+y] == -1:
 								nG += 1
 							elif gridAsArray[j+x][i+y] == 0:
-								openNodes.append((j+x,i+y))
+								self.openNodes.append((j+x,i+y))
 								nW += 1
 							elif gridAsArray[j+x][i+y] == 100:
 								nB += 1

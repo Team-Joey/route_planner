@@ -13,8 +13,11 @@ from 	geometry_msgs.msg 	import Twist
 from 	visualization_msgs.msg import Marker
 from 	visualization_msgs.msg import MarkerArray
 import 	route_planner.map_grid
+import 	route_planner.food_item
+import 	random
 
 ROBOTS = []
+FOOD_ITEMS = []
 MARKER_PUB = None
 MAP_GRID = None
 
@@ -59,9 +62,14 @@ def update():
 
 		# create a marker for the robot and append to marker array
 		markers += (create_robot_marker(robot, id))
-		#markers.append(create_robot_marker(robot, id))
 
-		# + 2 because two markers are created- shape and text
+		# +2 because two markers are created- shape and text
+		id += 2
+
+	for food_item in FOOD_ITEMS:
+		markers += (create_food_marker(food_item, id))
+
+		# +2 because two markers are created- shape and text
 		id += 2
 
 	MARKER_PUB.publish(markers)
@@ -75,8 +83,6 @@ def create_robot_marker(robot, id):
 	robotMarker.id = id
 	robotMarker.type = 2 # sphere
 	robotMarker.action = 0
-
-	robotMarker.pose = robot._route_planner.current_pose.pose
 
 	# need to add offset to marker position
 	robotMarker.pose.position.x = robot._route_planner.current_pose.pose.position.x + MAP_GRID.origin_x
@@ -104,9 +110,8 @@ def create_robot_marker(robot, id):
 	robotMarkerText.action = 0
 	robotMarkerText.text=robot.name
 
-	# for some reason the text marker doesn't need offsetting with origin, not sure why...
-	robotMarkerText.pose.position.x = robot._route_planner.current_pose.pose.position.x #+ MAP_GRID.origin_x
-	robotMarkerText.pose.position.y = robot._route_planner.current_pose.pose.position.y #+ MAP_GRID.origin_y
+	robotMarkerText.pose.position.x = robot._route_planner.current_pose.pose.position.x + MAP_GRID.origin_x
+	robotMarkerText.pose.position.y = robot._route_planner.current_pose.pose.position.y + MAP_GRID.origin_y
 	# give z of 2 so the text is above other markers
 	robotMarkerText.pose.position.z = 2
 
@@ -121,9 +126,72 @@ def create_robot_marker(robot, id):
 	robotMarkerText.color.b = 1.0
 	robotMarkerText.color.a = 1.0
 
-
-
 	return [robotMarker, robotMarkerText]
+
+# returns an array containing a shape marker and a text marker
+def create_food_marker(food_item, id):
+	foodMarker = Marker()
+	foodMarker.header.frame_id = "/map"
+	foodMarker.header.stamp    = rospy.get_rostime()
+	foodMarker.ns = food_item.label
+	foodMarker.id = id
+	foodMarker.type = 1
+	foodMarker.action = 0
+
+	# need to add offset to marker position
+	foodMarker.pose.position.x = food_item.x
+	foodMarker.pose.position.y = food_item.y
+
+	foodMarker.lifetime = rospy.Duration(0)
+	
+	foodMarker.scale.x = 1.0
+	foodMarker.scale.y = 1.0
+	foodMarker.scale.z = 1.0
+
+	foodMarker.color.r = 1.0
+	foodMarker.color.g = 0.0
+	foodMarker.color.b = 1.0
+	foodMarker.color.a = 1.0
+
+
+	foodMarkerText = Marker()
+	foodMarkerText.header.frame_id = "/map"
+	foodMarkerText.header.stamp    = rospy.get_rostime()
+	foodMarkerText.ns = food_item.label + "_text"
+
+	foodMarkerText.id = id + 1
+	foodMarkerText.type = Marker.TEXT_VIEW_FACING
+	foodMarkerText.action = 0
+	foodMarkerText.text=food_item.label
+
+	foodMarkerText.pose.position.x = food_item.x
+	foodMarkerText.pose.position.y = food_item.y
+	# give z of 2 so the text is above other markers
+	foodMarkerText.pose.position.z = 2
+
+	foodMarkerText.lifetime = rospy.Duration(0)
+	
+	foodMarkerText.scale.x = 1.0
+	foodMarkerText.scale.y = 1.0
+	foodMarkerText.scale.z = 1.0
+
+	foodMarkerText.color.r = 1.0
+	foodMarkerText.color.g = 0.0
+	foodMarkerText.color.b = 1.0
+	foodMarkerText.color.a = 1.0
+
+	return [foodMarker, foodMarkerText]
+
+def place_food():
+	food_to_place = 5
+
+	for i in range(0, food_to_place):
+		randindex = random.randrange(0, len(MAP_GRID.openNodes))
+		coords = MAP_GRID.openNodes[randindex]
+		x = (coords[0]*MAP_GRID.resolution)
+		y = (coords[1]*MAP_GRID.resolution)
+		f = route_planner.food_item.FoodItem(x,y,"food")
+		FOOD_ITEMS.append(f)
 
 def set_map(occupancy_map):
 	"""Set the map"""
@@ -146,6 +214,7 @@ if __name__ == '__main__':
 	rospy.loginfo("Map received. %d X %d, %f m/px." % (ocuccupancy_map.info.width, ocuccupancy_map.info.height, ocuccupancy_map.info.resolution))
 	MAP_GRID =  route_planner.map_grid.MapGrid()
 	set_map(ocuccupancy_map)
+	place_food()
 
 
 	placeholder_shopping_list = []

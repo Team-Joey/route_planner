@@ -17,6 +17,6 @@ class FoodItem(object):
 		return self.x, self.y
 
 	def pick_up():
-	'''
-	'''
+		'''
+		'''
 		print("Robot picked up ", label)
