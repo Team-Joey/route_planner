@@ -81,18 +81,19 @@ def create_robot_marker(robot, id):
 	robotMarker.header.stamp    = rospy.get_rostime()
 	robotMarker.ns = robot.name
 	robotMarker.id = id
-	robotMarker.type = 2 # sphere
+	robotMarker.type = 1 # sphere
 	robotMarker.action = 0
 
 	# need to add offset to marker position
 	robotMarker.pose.position.x = robot._route_planner.current_pose.pose.position.x + MAP_GRID.origin_x
 	robotMarker.pose.position.y = robot._route_planner.current_pose.pose.position.y + MAP_GRID.origin_y
+	robotMarker.pose.orientation = robot._route_planner.current_pose.pose.orientation
 
 	robotMarker.lifetime = rospy.Duration(0)
 	
-	robotMarker.scale.x = 1.0
-	robotMarker.scale.y = 1.0
-	robotMarker.scale.z = 1.0
+	robotMarker.scale.x = 0.5
+	robotMarker.scale.y = 0.5
+	robotMarker.scale.z = 0.5
 
 	robotMarker.color.r = 0.0
 	robotMarker.color.g = 1.0
@@ -117,9 +118,9 @@ def create_robot_marker(robot, id):
 
 	robotMarkerText.lifetime = rospy.Duration(0)
 	
-	robotMarkerText.scale.x = 1.0
-	robotMarkerText.scale.y = 1.0
-	robotMarkerText.scale.z = 1.0
+	robotMarkerText.scale.x = 0.5
+	robotMarkerText.scale.y = 0.5
+	robotMarkerText.scale.z = 0.5
 
 	robotMarkerText.color.r = 0.0
 	robotMarkerText.color.g = 0.0
@@ -135,7 +136,7 @@ def create_food_marker(food_item, id):
 	foodMarker.header.stamp    = rospy.get_rostime()
 	foodMarker.ns = food_item.label
 	foodMarker.id = id
-	foodMarker.type = 1
+	foodMarker.type = 2
 	foodMarker.action = 0
 
 	# need to add offset to marker position
@@ -144,9 +145,9 @@ def create_food_marker(food_item, id):
 
 	foodMarker.lifetime = rospy.Duration(0)
 	
-	foodMarker.scale.x = 1.0
-	foodMarker.scale.y = 1.0
-	foodMarker.scale.z = 1.0
+	foodMarker.scale.x = 0.5
+	foodMarker.scale.y = 0.5
+	foodMarker.scale.z = 0.5
 
 	foodMarker.color.r = 1.0
 	foodMarker.color.g = 0.0
@@ -171,9 +172,9 @@ def create_food_marker(food_item, id):
 
 	foodMarkerText.lifetime = rospy.Duration(0)
 	
-	foodMarkerText.scale.x = 1.0
-	foodMarkerText.scale.y = 1.0
-	foodMarkerText.scale.z = 1.0
+	foodMarkerText.scale.x = 0.5
+	foodMarkerText.scale.y = 0.5
+	foodMarkerText.scale.z = 0.5
 
 	foodMarkerText.color.r = 1.0
 	foodMarkerText.color.g = 0.0
