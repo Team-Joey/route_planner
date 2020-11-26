@@ -18,7 +18,7 @@ class RoutePlannerNode(object):
 	# ----- Minimum change DELTA before publishing a pose
 	self._PUBLISH_DELTA = rospy.get_param("publish_delta", 0.1)
 	self._route_planner = route_planner.rp.RoutePlanner() 
-	self._route_planner.dummy_function_sum(3, 4)				# Accessing a function in the script
+	#self._route_planner.dummy_function_sum(3, 4)				# Accessing a function in the script
 
 	self._latest_scan = None
 	self._last_published_pose = None
@@ -36,6 +36,18 @@ class RoutePlannerNode(object):
 	rospy.Subscriber(odom_topic, Odometry, self._route_planner._odometry_callback)
 
 	# ----- Then set the occupancy grid map
+	rospy.loginfo("Waiting for a map...")
+    	try:
+			ocuccupancy_map = rospy.wait_for_message("/map", OccupancyGrid, 20)
+	except:
+		rospy.logerr("Problem getting a map. Check that you have a map_server"
+                 " running: rosrun map_server map_server <mapname> " )
+		sys.exit(1)
+	rospy.loginfo("Map received. %d X %d, %f m/px." %
+                  (ocuccupancy_map.info.width, ocuccupancy_map.info.height,
+                   ocuccupancy_map.info.resolution))
+	self._route_planner.set_map(ocuccupancy_map)
+	
 	""" 
 	TO DO: 
 	1. Uncomment the commented imports. - done
