@@ -13,15 +13,15 @@ class N:
 	def __init__(self, p):
 		self.parent = None
 		self.p = p
-		self.isObstacle = false
-		self.visited = false
+		self.isObstacle = False
+		self.visited = False
 		self.gDist = 0.0
 		self.lDist = 0.0
 		self.neighbours = []
 
 class RoutePlanner(object):
 
-	def __init__(self, _cmd_vel, shopping_list):
+	def __init__(self, _cmd_vel, shopping_list, map_grid):
 		rospy.loginfo("A route planner object was created.")
 		self.current_pose = PoseStamped()			# Current pose of the robot
 		self.occupancy_map = OccupancyGrid()			# Occupancy Grid map
@@ -30,13 +30,13 @@ class RoutePlanner(object):
 		self.current_pose.header.frame_id = "/map"
 		
 		start_p = Pose()
-		start_p.pose.position.x = 1
-		start_p.pose.position.y = 1
+		start_p.position.x = 1
+		start_p.position.y = 1
 		end_p = Pose()
-		end_p.pose.position.x = 5
-		end_p.pose.position.y = 5
+		end_p.position.x = 5
+		end_p.position.y = 5
 		
-
+		self.map_grid = map_grid
 		self.path_to_next_item = self.A_Star(start_p, end_p)
 		self.shopping_list = shopping_list
 
@@ -85,7 +85,7 @@ class RoutePlanner(object):
 	def heuristic(self, p1, p2):
         	return distance(p1, p2)
 
-	def A_star(self, start_position, target_position):
+	def A_Star(self, start_position, target_position):
 		"""
 		Find shortest path from a given start "position" to 
 		a given target "position" (using A* algorithm)
@@ -97,7 +97,7 @@ class RoutePlanner(object):
 
 		#Reset all nodes' parent, visited and distance values
 		for n in range(0, len(Nodes)):
-		    Nodes[n].visited = false
+		    Nodes[n].visited = False
 		    Nodes[n].gDist = 99999999
 		    Nodes[n].hDist = 99999999
 		    Nodes[n].parent = None
@@ -107,7 +107,7 @@ class RoutePlanner(object):
 		    if (Nodes[n].p == target_position): 
 		        endNodeIndex = n
 		
-		Nodes[startNodeIdex].gDist = 0.0
+		Nodes[startNodeIndex].gDist = 0.0
 		Nodes[startNodeIndex].hDist = heuristic(start_position, target_position)
 		Nodes[endNodeIndex].h = 0.0
 		cNI = startNodeIndex

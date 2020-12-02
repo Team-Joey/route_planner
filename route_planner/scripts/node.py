@@ -41,7 +41,7 @@ class RoutePlannerNode(object):
 		self._tf_publisher = rospy.Publisher("/tf", tfMessage, queue_size=1)			# Publishes tf message for debugging
 		self._cmd_vel = rospy.Publisher(cmd_vel, Twist, queue_size=100)				# Publishes tf message for debugging
 		
-		self._route_planner = route_planner.rp.RoutePlanner(self._cmd_vel, placeholder_shopping_list)
+		self._route_planner = route_planner.rp.RoutePlanner(self._cmd_vel, placeholder_shopping_list, MAP_GRID)
 
 		# subscribe to the odom and laser topics for this robot
 		rospy.Subscriber(base_scan_topic, LaserScan, self._route_planner._laser_callback)
