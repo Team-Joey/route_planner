@@ -3,43 +3,65 @@ from 	geometry_msgs.msg 	import PoseStamped, Quaternion
 from 	nav_msgs.msg 		import OccupancyGrid
 from 	util 			import rotateQuaternion, getHeading
 from 	tf.msg 			import tfMessage
-
-import map_grid
-
-class N:
-    def __init__(self, p):
-        self.parent = None
-        self.p = p
-        self.isObstacle = false
-        self.visited = false
-        self.gDist = 0.0
-        self.lDist = 0.0
-        self.neighbours = []
-
+from 	geometry_msgs.msg 	import Twist
+import 	math
+from 	math 			import cos, sin
+import 	route_planner.movement
+import 	map_grid
 
 class RoutePlanner(object):
-    START_X = 0
-    START_Y = 0
-    START_Z = 0
-    START_HEADING = 0
 
-    def __init__(self):
-	    rospy.loginfo("A route planner object was created.")
-	    self.current_pose = PoseStamped()			# Current pose of the robot
-	    self.occupancy_map = OccupancyGrid()			# Occupancy Grid map
-	    self.tf_message = tfMessage()				# tf message for debugging
-
-	    # ---- Setting the current pose based on the given starting point 
-	    self.current_pose.pose.position.x = self.START_X
-	    self.current_pose.pose.position.y = self.START_Y
-	    self.current_pose.pose.position.z = self.START_Z
-	    self.current_pose.pose.orientation = rotateQuaternion(Quaternion(w=1.0), self.START_HEADING)
-	    self.current_pose.header.frame_id = "/map"
-        # ----- Sensor model
-	    self.map_grid =  map_grid.MapGrid()
+    def __init__(self, _cmd_vel, shopping_list):
+        rospy.loginfo("A route planner object was created.")
+        self.current_pose = PoseStamped()			# Current pose of the robot
+        self.occupancy_map = OccupancyGrid()			# Occupancy Grid map
+        self.tf_message = tfMessage()				# tf message for debugging
         
-        # ----- Create list of 3x3? pixels nodes from occupancy grid
-    
+        self.current_pose.header.frame_id = "/map"
+
+        self.path_to_next_item = [[1,-1], [2,-1], [2,0]]
+        self.shopping_list = shopping_list
+
+        self._cmd_vel = _cmd_vel
+
+        # create a movement object which will handle all translation and rotation of the robot
+        self.movement = route_planner.movement.Movement(_cmd_vel)
+
+        self.current_pose.header.frame_id = "/map"
+        # ----- Sensor model
+        self.map_grid =  map_grid.MapGrid()
+        
+        
+
+
+#------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
+
+    def _odometry_callback(self, odometry):
+        """
+        The function is called when the robot moves.
+        If the robot's task list is not empty, the function
+        checks if it is close enough. then updates target.
+        """
+        self.current_pose = odometry.pose
+
+        if len(self.path_to_next_item) == 0: 
+            print("Finished path, either we are done or need to get path to next item")
+
+        else:
+
+            current_target = self.path_to_next_item[0]
+
+            # call the movement function, returns true if robot has reached target
+            if (self.movement.movement_update(current_target, odometry)):
+
+                self.path_to_next_item.remove(current_target)
+
+                if len(self.path_to_next_item) > 0:
+                    # ---- Change target and remove it from task list
+                    current_target = self.path_to_next_item[0]
+
+# ----------------------------------------------------------------------------
+
     def distance(self, p1, p2):
         return sqrt( (p2.x - p1.x)**2 + (p2.y - p1.y)**2 )
 
@@ -47,126 +69,106 @@ class RoutePlanner(object):
         return distance(p1, p2)
 
     def A_star(self, start_position, target_position):
-        """ 
-	    Find shortest path from a given start position to 
-	    a given target position (using A* algorithm)
-	    Return: Array of coordinates the robot would visit
-	    """
-        self.startN = None
-        self.endN = None
-        
-        for n in range(0, len(gridNodes)):
-            gridNodes(n).visited = false
-            gridNodes(n).gDist = 99999999
-            gridNodes(n).lDist = 99999999
-            gridNodes(n).parent = None
-            if (gridNodes(n).p == start_position): #add 3x3 square offset
-                self.startN = gridNodes(n)
-            if (gridNodes(n).p == target_position): #add 3x3 square offset
-                self.endN = gridNodes(n)
-        
-        self.startN.lDist = 0.0
-        self.startN.gDist = heuristic(start_position, target_position)
-        self.currentN = self.startN
+        """
+        Find shortest path from a given start "position" to 
+        a given target "position" (using A* algorithm)
+        Return: Array of pixel "coordinates" the robot would visit
+        """
+        Nodes = self.map_grid.gridNodes
+        startNodeIndex = None
+        endNodeIndex = None
 
-        self.notTestedNodes = []
-        self.notTestedNodes.append(self.startN)
+        #Reset all nodes' parent, visited and distance values
+        for n in range(0, len(Nodes)):
+            Nodes[n].visited = false
+            Nodes[n].gDist = 99999999
+            Nodes[n].hDist = 99999999
+            Nodes[n].parent = None
+            #Set starting and ending nodes
+            if (Nodes[n].p == start_position): 
+                startNodeIndex = n
+            if (Nodes[n].p == target_position): 
+                endNodeIndex = n
         
-        """ and (self.currentN.p != target_position) """
-        while ((not self.notTestedNodes)):
+        Nodes[startNodeIdex].gDist = 0.0
+        Nodes[startNodeIndex].hDist = heuristic(start_position, target_position)
+        Nodes[endNodeIndex].h = 0.0
+        cNI = startNodeIndex
+
+        notTestedNI = []
+        #Add start node to list of not visited nodes
+        notTestedNI.append(startNodeIndex)
+        
+        #Loop while there are nodes to test
+        while ((not notTestedNodesI)):#and (self.currentN.p != target_position)
             
-            for n in range(0, len(self.notTestedNodes)):
-                if (self.notTestedNodes(n).visited):
-                    self.notTestedNodes.remove(self.notTestedNodes(n))
+            #Remove visited nodes
+            for n in range(0, len(notTestedNI)):
+                if (Nodes[notTestedNI[n]].visited):
+                    notTestedNI.remove(notTestedNI[n])
 
-            if (not self.notTestedNodes):
+            #If list is empty end loop
+            if (not notTestedNI):
                 break
 
-            for n in range(0, len(self.notTestedNodes)):
-                if (self.currentN.gDist > self.notTestedNodes(n).gDist):
-                    self.currentN = self.notTestedNodes(n)
+            #Set current node to node with the least g + h distance
+            for n in range(0, len(notTestedNI)):
+                if ((Nodes[cNI].gDist + Nodes[cNI].hDist) > (Nodes[notTestedNI[n]].gDist + Nodes[notTestedNI[n]].hDist)):
+                    cNI = notTestedNI[n]
             
-            self.currentN.visited = true
-
-            for n in range(0, len(self.currentN.neighbours)):
-
-                if ((not self.currentN.neighbours(n).visited) and (not self.currentN.neighbours(n).isObstacle)):
-                    self.notTestedNodes.append(self.currentN.neighbours(n))
-
-                self.possiblyLowerDist = self.currentN.lDist + distance(self.currentN.p, self.currentN.neighbours(n).p)
-
-                if (self.possiblyLowerDist < self.currentN.neighbours(n).lDist):
-                    self.currentN.neighbours(n).parent = self.currentN
-                    self.currentN.neighbours(n).lDist = self.possiblyLowerDist
-                    self.currentN.neighbours(n).gDist = self.currentN.neighbours(n).lDist + heuristic(self.currentN.neighbours(n).p, target_position)
-
-        """
-        openlist = []
-        closedlist = []
-
-        openlist.append(startN)
-
-        while openlist != empty
-            currentN = lowest N.f in openlist
-            openlist.remove(currentN)
-            closedlist.append(currentN)
-
-            if currentN = goal
-                done
+            if cNI == endNodeIndex:
+                break
             
-            currentN.children = adjNs
+            Nodes[cNI].visited = True
 
-            for child in children
-                if child in closedlist
-                    do nothing
-                else
-                    child.g = currentN.g + d between child & current
-                    child.h = d from child to goal
-                    child.f = child.g + child.h
+            #Loop through the current nodes' neighbours or "children"
+            for n in range(0, len(Nodes[cNI].neighbours)):
+                
+                #Add neighbour to list if it hasn't been visited and isn't an obstacle
+                k = Nodes[cNI].neighbours[n]
+                if ((not Nodes[k].visited) and (not Nodes[k].isObstacle)):
+                    notTestedNI.append(Nodes[k])
 
-                    if child.position is in openlist's nodes positions
-                        if the child.g is higher than the openlist node's g
-                            do nothing
-                    else
-                        openlist.append(child)
-        """
+                possiblyLowerDist = Nodes[cNI].lDist + distance(Nodes[cNI].p, Nodes[k].p)
 
+                if (possiblyLowerDist < Nodes[k].lDist):
+                    Nodes[k].parent = cNI
+                    Nodes[k].lDist = possiblyLowerDist
+                    Nodes[k].gDist = Nodes[k].lDist + heuristic(Nodes[k].p, target_position)
+        
+        path = []
+
+        while parent != None:
+            x = Nodes[cNI].p.x
+            y = -Nodes[cNI].p.y
+            path.append([x,y])
+            cNI = Nodes[cNI].parent
+
+        return path
 
     def set_map(self, occupancy_map):
         """Set the map"""
         self.map_grid.set_map(occupancy_map)
+        
 
-
-#--------------------------------Dummy-------------------------------------------------------------------------------------------------------------------
-
-"""     def dummy_function_sum(self, a, b):
-	"""
-	#Dummy function. Sums 2 numbers.
-	"""
-	rospy.loginfo("Dummy function started")
-
-	print("The sum of ", a, " and ", b," is ", a+b) """
 
 #------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
-
-    def _odometry_callback(self, odometry):
-    	print("recieving odom")
-
     def _laser_callback(self, scan):
-    	print("recieving scan")
+        x = 0
+
 
     def find_coordinate(self, product):			# Might need more arguments
         """ 
-	Find the coordinate of the given product
-	using the map
-	Return: coordinates of the product
-	"""
+    Find the coordinate of the given product
+    using the map
+    Return: coordinates of the product
+    """
         raise NotImplementedError()
 
     def sort(self, products_array):
         """
-	This function sorts the array of products in some order
-	Returns: sorted products_array
-	"""
+    This function sorts the array of products in some order
+    Returns: sorted products_array
+    """
         raise NotImplementedError()
 
