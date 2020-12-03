@@ -37,7 +37,7 @@ class RoutePlanner(object):
 		end_p.position.y = 5
 		
 		self.map_grid = map_grid
-		self.path_to_next_item = self.A_Star(start_p, end_p)
+		self.path_to_next_item = []#self.A_Star(start_p, end_p)
 		self.shopping_list = shopping_list
 
 		self._cmd_vel = _cmd_vel

@@ -15,6 +15,7 @@ from 	visualization_msgs.msg import MarkerArray
 import 	route_planner.map_grid
 import 	route_planner.food_item
 import 	random
+import	math
 
 ROBOTS = []
 FOOD_ITEMS = []
@@ -183,16 +184,76 @@ def create_food_marker(food_item, id):
 
 	return [foodMarker, foodMarkerText]
 
+def rotate(origin, point, angle):
+    """
+    Rotate a point counterclockwise by a given angle around a given origin.
+
+    The angle should be given in radians.
+    """
+    ox, oy = origin
+    px, py = point
+
+    qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
+    qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
+    return qx, qy
+
 def place_food():
-	food_to_place = 5
+	"""
+	Place food around the map. Placed near walls (to replicate being on a shelf)
+	"""
+
+	food_to_place = 15
 
 	for i in range(0, food_to_place):
-		randindex = random.randrange(0, len(MAP_GRID.openNodes))
-		coords = MAP_GRID.openNodes[randindex]
+		# choose random wall from map
+		randindex = random.randrange(0, len(MAP_GRID.walls))
+		coords = MAP_GRID.walls[randindex]
+		x = 0
+		y = 0
+		minDistance = 20
+		maxDistance = 25
+		food_placed = False
+
 		x = (coords[0]*MAP_GRID.resolution)
 		y = (coords[1]*MAP_GRID.resolution)
-		f = route_planner.food_item.FoodItem(x,y,"food")
-		FOOD_ITEMS.append(f)
+
+		# then find nearby open space
+		for space in MAP_GRID.openNodes:
+			# check distance
+			dist = math.sqrt( (coords[0] - space[0])**2 + (coords[1] - space[1])**2 )
+
+			# if the current space is close to a wall, but not too close, use this space
+			if (dist < maxDistance and dist > minDistance):
+
+				valid = True
+				# check that this space is not too close to another food item
+				for food in FOOD_ITEMS:
+					dist = math.sqrt( (food.x/MAP_GRID.resolution - space[0])**2 + (food.y/MAP_GRID.resolution - space[1])**2 )
+					if (dist < minDistance):
+						valid = False
+						break
+
+				if (valid):
+					# finally, check every wall isn't too close to this space
+					finalCheck = True
+					for wall in MAP_GRID.walls:
+						dist = math.sqrt( (wall[0] - space[0])**2 + (wall[1] - space[1])**2 )
+
+						if (dist < minDistance):
+							finalCheck = False
+
+					if (finalCheck):
+						food_placed = True
+						x = (space[0]*MAP_GRID.resolution)
+						y = (space[1]*MAP_GRID.resolution)
+						break
+
+		# it's possible that no space was available to place the food, in this case, don't add anything
+		if (food_placed):
+			# coordinates need to be rotated by 90 degrees
+			x,y = rotate((16,16),(x,y), -math.pi/2)
+			f = route_planner.food_item.FoodItem(x,y,"food")
+			FOOD_ITEMS.append(f)
 
 def set_map(occupancy_map):
 	"""Set the map"""
@@ -200,6 +261,7 @@ def set_map(occupancy_map):
 
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
+	print(math.sqrt(9))
 	rospy.init_node('Joey', anonymous = True) 	# (anonymous = True) ensures the name is unique for each node 
 	rospy.loginfo("Creating the node instance...")
 

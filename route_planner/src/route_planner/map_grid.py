@@ -72,6 +72,7 @@ class MapGrid(object):
 
         scaleFactor = 3
         self.openNodes = []
+        self.walls = []
 
         for i in range(0,600,scaleFactor):
             lowResRow = []
@@ -88,7 +89,8 @@ class MapGrid(object):
                             self.openNodes.append((i+x,j+y))
                             nW += 1
                         elif gridAsArray[i+x][j+y] == 100:
-                            nB += 1
+                        	self.walls.append((i+x,j+y))
+                        	nB += 1
                 colorValues = [nW,nB,nG]
                 maxN = max(colorValues)
                 maxIndex = colorValues.index(maxN)
