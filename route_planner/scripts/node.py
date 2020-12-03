@@ -200,18 +200,19 @@ def rotate(origin, point, angle):
 def place_food():
 	"""
 	Place food around the map. Placed near walls (to replicate being on a shelf)
+	minDistance is min distance food can be from a wall or other food item
+	maxDistance is max
 	"""
 
-	food_to_place = 15
+	food_to_place = 10
+	minDistance = 20
+	maxDistance = 25
 
-	for i in range(0, food_to_place):
+	while (food_to_place >= 0):
 		# choose random wall from map
 		randindex = random.randrange(0, len(MAP_GRID.walls))
 		coords = MAP_GRID.walls[randindex]
-		x = 0
-		y = 0
-		minDistance = 20
-		maxDistance = 25
+
 		food_placed = False
 
 		x = (coords[0]*MAP_GRID.resolution)
@@ -234,13 +235,8 @@ def place_food():
 						break
 
 				if (valid):
-					# finally, check every wall isn't too close to this space
-					finalCheck = True
-					for wall in MAP_GRID.walls:
-						dist = math.sqrt( (wall[0] - space[0])**2 + (wall[1] - space[1])**2 )
-
-						if (dist < minDistance):
-							finalCheck = False
+					# finally, check the surrounding space is clear of walls
+					finalCheck = check_surroundings(space[0], space[1], minDistance)
 
 					if (finalCheck):
 						food_placed = True
@@ -251,9 +247,32 @@ def place_food():
 		# it's possible that no space was available to place the food, in this case, don't add anything
 		if (food_placed):
 			# coordinates need to be rotated by 90 degrees
-			x,y = rotate((16,16),(x,y), -math.pi/2)
+			x,y = rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(x,y), -math.pi/2)
+
+			# add food item to global list
 			f = route_planner.food_item.FoodItem(x,y,"food")
 			FOOD_ITEMS.append(f)
+
+			# update how many food items are left to place
+			food_to_place-=1
+
+def check_surroundings(origin_x, origin_y, area_size):
+	"""
+	Given a pair of coordinates, check the surrounding area in the occupany map.
+	Return True if all surrounding space is empty
+	"""
+	for x in range (-area_size, area_size):
+		newX = x + origin_x
+		if (newX > 0 and newX < len(MAP_GRID.OC_GRID_TEMP[0])):
+			for y in range (-area_size, area_size):
+
+				newY = y + origin_y
+
+				if (newY > 0 and newY < len(MAP_GRID.OC_GRID_TEMP[1])):
+					value = MAP_GRID.OC_GRID_TEMP[newX, newY]
+					if not (value == 0):
+						return False
+	return True
 
 def set_map(occupancy_map):
 	"""Set the map"""

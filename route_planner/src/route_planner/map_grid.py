@@ -63,7 +63,7 @@ class MapGrid(object):
         gridAsArray = np.delete(gridAsArray,600,0)
         gridAsArray = np.delete(gridAsArray,600,1)
         gridAsArray = np.flip(gridAsArray,0)
-
+        self.OC_GRID_TEMP = gridAsArray
         img = Image.fromarray(np.uint8(gridAsArray * 255) , 'L')
         img.save('main.png',format="png")
         print("STOP")
