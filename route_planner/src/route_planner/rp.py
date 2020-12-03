@@ -9,65 +9,63 @@ from 	math 			import cos, sin
 import 	route_planner.movement
 
 class N:
-	def __init__(self, p):
-		self.parent = None
-		self.p = p
-		self.isObstacle = false
-		self.visited = false
-		self.gDist = 0.0
-		self.lDist = 0.0
-		self.neighbours = []
+    def __init__(self, p):
+        self.parent = None
+        self.p = p
+        self.isObstacle = false
+        self.visited = false
+        self.gDist = 0.0
+        self.lDist = 0.0
+        self.neighbours = []
 
 class RoutePlanner(object):
 
-	def __init__(self, _cmd_vel, shopping_list):
-		rospy.loginfo("A route planner object was created.")
-		self.current_pose = PoseStamped()			# Current pose of the robot
-		self.occupancy_map = OccupancyGrid()			# Occupancy Grid map
-		self.tf_message = tfMessage()				# tf message for debugging
-		
-		self.current_pose.header.frame_id = "/map"
+    def __init__(self, _cmd_vel, shopping_list):
+        rospy.loginfo("A route planner object was created.")
+        self.current_pose = PoseStamped()			# Current pose of the robot
+        self.occupancy_map = OccupancyGrid()			# Occupancy Grid map
+        self.tf_message = tfMessage()				# tf message for debugging
+        
+        self.current_pose.header.frame_id = "/map"
 
-		self.path_to_next_item = [[1,-1], [2,-1], [2,0]]
-		self.shopping_list = shopping_list
+        self.path_to_next_item = [[1,-1], [2,-1], [2,0]]
+        self.shopping_list = shopping_list
 
-		self._cmd_vel = _cmd_vel
+        self._cmd_vel = _cmd_vel
 
-		# create a movement object set_mapwhich will handle all translation and rotation of the robot
-		self.movement = route_planner.movement.Movement(_cmd_vel)
-
-		self.current_pose.header.frame_id = "/map"
+        # create a movement object set_mapwhich will handle all translation and rotation of the robot
+        self.movement = route_planner.movement.Movement(_cmd_vel)
 
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 
-	def receive_map_update(self, map_grid):
-		# do something
-		x = 0
+    def receive_map_update(self, map_grid):
+        # do something
+        x = 0
 
 
-	def _odometry_callback(self, odometry):
-		"""
-		The function is called when the robot moves.
-		If the robot's task list is not empty, the function
-		checks if it is close enough. then updates target.
-		"""
-		self.current_pose = odometry.pose
+    def _odometry_callback(self, odometry):
+        """
+        The function is called when the robot moves.
+        If the robot's task list is not empty, the function
+        checks if it is close enough. then updates target.
+        """
+        self.current_pose = odometry.pose
 
-		if len(self.path_to_next_item) == 0: 
-			print("Finished path, either we are done or need to get path to next item")
+        if len(self.path_to_next_item) == 0: 
+            print("Finished path, either we are done or need to get path to next item")
 
-		else:
+        else:
 
-			current_target = self.path_to_next_item[0]
+            current_target = self.path_to_next_item[0]
 
-			# call the movement function, returns true if robot has reached target
-			if (self.movement.movement_update(current_target, odometry)):
+            # call the movement function, returns true if robot has reached target
+            if (self.movement.movement_update(current_target, odometry)):
 
-				self.path_to_next_item.remove(current_target)
+                self.path_to_next_item.remove(current_target)
 
-				if len(self.path_to_next_item) > 0:
-					# ---- Change target and remove it from task list
-					current_target = self.path_to_next_item[0]
+                if len(self.path_to_next_item) > 0:
+                    # ---- Change target and remove it from task list
+                    current_target = self.path_to_next_item[0]
 
 # ----------------------------------------------------------------------------
 
@@ -162,22 +160,22 @@ class RoutePlanner(object):
         self.map_grid.set_map(occupancy_map)
         
 #------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
-	def _laser_callback(self, scan):
-		x = 0
+    def _laser_callback(self, scan):
+        x = 0
 
 
-	def find_coordinate(self, product):			# Might need more arguments
-		""" 
-	Find the coordinate of the given product
-	using the map
-	Return: coordinates of the product
-	"""
-		raise NotImplementedError()
+    def find_coordinate(self, product):			# Might need more arguments
+        """ 
+    Find the coordinate of the given product
+    using the map
+    Return: coordinates of the product
+    """
+        raise NotImplementedError()
 
-	def sort(self, products_array):
-		"""
-	This function sorts the array of products in some order
-	Returns: sorted products_array
-	"""
-		raise NotImplementedError()
+    def sort(self, products_array):
+        """
+    This function sorts the array of products in some order
+    Returns: sorted products_array
+    """
+        raise NotImplementedError()
 

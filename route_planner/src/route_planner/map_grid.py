@@ -217,7 +217,7 @@ class MapGrid(object):
         #Convert to numpy arrays
         lowResGridAsArray = np.asarray(lowerResGridAsListOfLists)
         lowResGridColorsAsArray = np.asarray(lowerResGridColorsAsListOfLists)
-        openNodesAsArray = np.asarray(openNodes)
+        openNodesAsArray = np.asarray(self.openNodes)
         pathArray = np.asarray(pathList)
         
         rospy.loginfo("TESTING PART BEGINNING")
@@ -239,7 +239,7 @@ class MapGrid(object):
     
         lowerResGridAsListOfLists = []       #For low res map representation
         lowerResGridColorsAsListOfLists = [] #For low res image representation
-        openNodes = []                       #For placing food objects in world
+        self.openNodes = []                       #For placing food objects in world
         
         scaleFactor = sf
         subgridSize = ss
@@ -263,7 +263,7 @@ class MapGrid(object):
                         elif gridArray[i+x][j+y] == 0:
                             #If the node is white, we can place a food item here
                             #So keep a track of the positions of these nodes.
-                            openNodes.append((i+x,j+y))
+                            self.openNodes.append((i+x,j+y))
                             nW += 1
                         elif gridArray[i+x][j+y] == 100:
                             nB += 1
@@ -294,7 +294,7 @@ class MapGrid(object):
         #Convert to numpy arrays
         lowResGridAsArray = np.asarray(lowerResGridAsListOfLists)
         lowResGridColorsAsArray = np.asarray(lowerResGridColorsAsListOfLists)
-        openNodesAsArray = np.asarray(openNodes)
+        openNodesAsArray = np.asarray(self.openNodes)
         
         returnArray = np.array([lowResGridAsArray, lowResGridColorsAsArray, openNodesAsArray])
         

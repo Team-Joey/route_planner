@@ -194,13 +194,6 @@ def place_food():
 		f = route_planner.food_item.FoodItem(x,y,"food")
 		FOOD_ITEMS.append(f)
 
-def set_map(occupancy_map):
-	"""Set the map"""
-	MAP_GRID.set_map(occupancy_map)
-
-def set_map(self, occupancy_map):
-    """Set the map"""
-    self.map_grid.set_map(occupancy_map)
 
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
@@ -218,7 +211,7 @@ if __name__ == '__main__':
 	
 	rospy.loginfo("Map received. %d X %d, %f m/px." % (ocuccupancy_map.info.width, ocuccupancy_map.info.height, ocuccupancy_map.info.resolution))
 	MAP_GRID =  route_planner.map_grid.MapGrid()
-	set_map(ocuccupancy_map)
+	MAP_GRID.set_map(ocuccupancy_map)
 	place_food()
 
 
