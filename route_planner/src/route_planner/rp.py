@@ -1,5 +1,5 @@
 import 	rospy
-from 	geometry_msgs.msg 	import PoseStamped, Quaternion, Pose
+from 	geometry_msgs.msg 	import PoseStamped, Quaternion
 from 	nav_msgs.msg 		import OccupancyGrid
 from 	util 			import rotateQuaternion, getHeading
 from 	tf.msg 			import tfMessage
@@ -7,37 +7,28 @@ from 	geometry_msgs.msg 	import Twist
 import 	math
 from 	math 			import cos, sin
 import 	route_planner.movement
-import 	map_grid
 
 class N:
 	def __init__(self, p):
 		self.parent = None
 		self.p = p
-		self.isObstacle = False
-		self.visited = False
+		self.isObstacle = false
+		self.visited = false
 		self.gDist = 0.0
 		self.lDist = 0.0
 		self.neighbours = []
 
 class RoutePlanner(object):
 
-	def __init__(self, _cmd_vel, shopping_list, map_grid):
+	def __init__(self, _cmd_vel, shopping_list):
 		rospy.loginfo("A route planner object was created.")
 		self.current_pose = PoseStamped()			# Current pose of the robot
 		self.occupancy_map = OccupancyGrid()			# Occupancy Grid map
 		self.tf_message = tfMessage()				# tf message for debugging
 		
 		self.current_pose.header.frame_id = "/map"
-		
-		start_p = Pose()
-		start_p.position.x = 1
-		start_p.position.y = 1
-		end_p = Pose()
-		end_p.position.x = 5
-		end_p.position.y = 5
-		
-		self.map_grid = map_grid
-		self.path_to_next_item = []#self.A_Star(start_p, end_p)
+
+		self.path_to_next_item = [[1,-1], [2,-1], [2,0]]
 		self.shopping_list = shopping_list
 
 		self._cmd_vel = _cmd_vel
@@ -79,93 +70,96 @@ class RoutePlanner(object):
 					current_target = self.path_to_next_item[0]
 
 # ----------------------------------------------------------------------------
-	def distance(self, p1, p2):
-        	return sqrt( (p2.x - p1.x)**2 + (p2.y - p1.y)**2 )
 
-	def heuristic(self, p1, p2):
-        	return distance(p1, p2)
+    def distance(self, p1, p2):
+        return math.sqrt( (p2.x - p1.x)**2 + (p2.y - p1.y)**2 )
 
-	def A_Star(self, start_position, target_position):
-		"""
-		Find shortest path from a given start "position" to 
-		a given target "position" (using A* algorithm)
-		Return: Array of pixel "coordinates" the robot would visit
-		"""
-		Nodes = self.map_grid.gridNodes
-		startNodeIndex = None
-		endNodeIndex = None
+    def heuristic(self, p1, p2):
+        return self.distance(p1, p2)
 
-		#Reset all nodes' parent, visited and distance values
-		for n in range(0, len(Nodes)):
-		    Nodes[n].visited = False
-		    Nodes[n].gDist = 99999999
-		    Nodes[n].hDist = 99999999
-		    Nodes[n].parent = None
-		    #Set starting and ending nodes
-		    if (Nodes[n].p == start_position): 
-		        startNodeIndex = n
-		    if (Nodes[n].p == target_position): 
-		        endNodeIndex = n
-		
-		Nodes[startNodeIndex].gDist = 0.0
-		Nodes[startNodeIndex].hDist = heuristic(start_position, target_position)
-		Nodes[endNodeIndex].h = 0.0
-		cNI = startNodeIndex
+    def A_star(self, start_position, target_position):
+        """
+        Find shortest path from a given start "position" to 
+        a given target "position" (using A* algorithm)
+        Return: Array of pixel "coordinates" the robot would visit
+        """
+        Nodes = self.map_grid.gridNodes
+        startNodeIndex = None
+        endNodeIndex = None
 
-		notTestedNI = []
-		#Add start node to list of not visited nodes
-		notTestedNI.append(startNodeIndex)
-		
-		#Loop while there are nodes to test
-		while ((not notTestedNodesI)):#and (self.currentN.p != target_position)
-		    
-		    #Remove visited nodes
-		    for n in range(0, len(notTestedNI)):
-		        if (Nodes[notTestedNI[n]].visited):
-		            notTestedNI.remove(notTestedNI[n])
+        #Reset all nodes' parent, visited and distance values
+        for n in range(0, len(Nodes)):
+            Nodes[n].visited = False
+            Nodes[n].lDist = 999999999999999999
+            Nodes[n].gDist = 999999999999999999
+            Nodes[n].parent = None
+            #Set starting and ending nodes
+            if (Nodes[n].p == start_position): 
+                startNodeIndex = n
+            if (Nodes[n].p == target_position): 
+                endNodeIndex = n
+        
+        print("start:", startNodeIndex)
+        print("end:", endNodeIndex)
 
-		    #If list is empty end loop
-		    if (not notTestedNI):
-		        break
+        Nodes[startNodeIndex].lDist = 0.0
+        Nodes[startNodeIndex].gDist = self.heuristic(start_position, target_position)
+        print(Nodes[startNodeIndex].gDist)
+        cNI = startNodeIndex
 
-		    #Set current node to node with the least g + h distance
-		    for n in range(0, len(notTestedNI)):
-		        if ((Nodes[cNI].gDist + Nodes[cNI].hDist) > (Nodes[notTestedNI[n]].gDist + Nodes[notTestedNI[n]].hDist)):
-		            cNI = notTestedNI[n]
-		    
-		    if cNI == endNodeIndex:
-		        break
-		    
-		    Nodes[cNI].visited = True
+        notTestedNI = []
+        #Add start node to list of not visited nodes
+        notTestedNI.append(startNodeIndex)
+        
+        #Loop while there are nodes to test
+        while (notTestedNI):
+            
+            #Set current node to node with the least g distance
+            cNI = notTestedNI[0]
+            for n in range(0, len(notTestedNI)):
+                if (Nodes[cNI].gDist > Nodes[notTestedNI[n]].gDist):
+                    cNI = notTestedNI[n]
+            
+            #print(cNI)
+            #print(Nodes[cNI].neighbours)
+            Nodes[cNI].visited = True
+            #print(Nodes[cNI].visited)
+            #End loop if path is found
+            if cNI == endNodeIndex:
+                break
+            
+            #Loop through the current nodes' neighbours or "children"
+            for n in range(0, len(Nodes[cNI].neighbours)):
+                
+                #Add neighbour to list if it hasn't been visited and isn't an obstacle
+                k = Nodes[cNI].neighbours[n]
+                if ((Nodes[k].visited == False) and (Nodes[k].isObstacle == False)):
+                    if k not in notTestedNI: notTestedNI.append(k)
 
-		    #Loop through the current nodes' neighbours or "children"
-		    for n in range(0, len(Nodes[cNI].neighbours)):
-		        
-		        #Add neighbour to list if it hasn't been visited and isn't an obstacle
-		        k = Nodes[cNI].neighbours[n]
-		        if ((not Nodes[k].visited) and (not Nodes[k].isObstacle)):
-		            notTestedNI.append(Nodes[k])
+                possiblyLowerDist = Nodes[cNI].lDist + self.distance(Nodes[cNI].p, Nodes[k].p)
 
-		        possiblyLowerDist = Nodes[cNI].lDist + distance(Nodes[cNI].p, Nodes[k].p)
+                if (possiblyLowerDist < Nodes[k].lDist):
+                    Nodes[k].parent = cNI
+                    Nodes[k].lDist = possiblyLowerDist
+                    Nodes[k].gDist = Nodes[k].lDist + self.heuristic(Nodes[k].p, target_position)
 
-		        if (possiblyLowerDist < Nodes[k].lDist):
-		            Nodes[k].parent = cNI
-		            Nodes[k].lDist = possiblyLowerDist
-		            Nodes[k].gDist = Nodes[k].lDist + heuristic(Nodes[k].p, target_position)
-		
-		path = []
+            #Remove visited node
+            notTestedNI.remove(cNI)
+            #print(notTestedNI)            
+        
+        path = []
+        if cNI == endNodeIndex:
+            while Nodes[cNI].parent != None:
+                x = Nodes[cNI].p.x
+                y = -Nodes[cNI].p.y
+                path.append([x,y])
+                cNI = Nodes[cNI].parent
+            path.reverse()
+        return path
 
-		while parent != None:
-		    x = Nodes[cNI].p.x
-		    y = -Nodes[cNI].p.y
-		    path.append([x,y])
-		    cNI = Nodes[cNI].parent
-
-		return path
-
-	def set_map(self, occupancy_map):
-       		"""Set the map"""
-        	self.map_grid.set_map(occupancy_map)
+    def set_map(self, occupancy_map):
+        """Set the map"""
+        self.map_grid.set_map(occupancy_map)
         
 #------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
 	def _laser_callback(self, scan):
