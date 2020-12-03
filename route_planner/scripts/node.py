@@ -5,7 +5,7 @@ import 	route_planner
 import 	route_planner.rp
 
 import 	sys
-from 	geometry_msgs.msg 	import PoseStamped
+from 	geometry_msgs.msg 	import Point, PoseStamped
 from 	tf.msg 			import tfMessage
 from 	sensor_msgs.msg 	import LaserScan
 from 	nav_msgs.msg 		import OccupancyGrid, Odometry
@@ -48,6 +48,15 @@ class RoutePlannerNode(object):
 		
 		rospy.loginfo("Map received. %d X %d, %f m/px." % (ocuccupancy_map.info.width, ocuccupancy_map.info.height, ocuccupancy_map.info.resolution))
 		self._route_planner.set_map(ocuccupancy_map)
+		s = Point()
+		e = Point()
+		s.x = 44
+		s.y = -54
+		e.x = 131
+		e.y = -182
+		print(self._route_planner.A_star(s,e))
+		exit()
+
 
 
 
@@ -55,6 +64,7 @@ class RoutePlannerNode(object):
 if __name__ == '__main__':
 	rospy.init_node('Joey', anonymous = True) 	# (anonymous = True) ensures the name is unique for each node 
 	rospy.loginfo("Creating the node instance...")
+
 
 	placeholder_shopping_list = []
 	# get all published topics

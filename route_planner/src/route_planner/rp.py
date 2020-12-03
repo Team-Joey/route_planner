@@ -31,9 +31,6 @@ class RoutePlanner(object):
         # ----- Sensor model
         self.map_grid =  map_grid.MapGrid()
         
-        
-
-
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 
     def _odometry_callback(self, odometry):
@@ -63,10 +60,10 @@ class RoutePlanner(object):
 # ----------------------------------------------------------------------------
 
     def distance(self, p1, p2):
-        return sqrt( (p2.x - p1.x)**2 + (p2.y - p1.y)**2 )
+        return math.sqrt( (p2.x - p1.x)**2 + (p2.y - p1.y)**2 )
 
     def heuristic(self, p1, p2):
-        return distance(p1, p2)
+        return self.distance(p1, p2)
 
     def A_star(self, start_position, target_position):
         """
@@ -80,9 +77,9 @@ class RoutePlanner(object):
 
         #Reset all nodes' parent, visited and distance values
         for n in range(0, len(Nodes)):
-            Nodes[n].visited = false
-            Nodes[n].gDist = 99999999
-            Nodes[n].hDist = 99999999
+            Nodes[n].visited = False
+            Nodes[n].lDist = 999999999999999999
+            Nodes[n].gDist = 999999999999999999
             Nodes[n].parent = None
             #Set starting and ending nodes
             if (Nodes[n].p == start_position): 
@@ -90,9 +87,12 @@ class RoutePlanner(object):
             if (Nodes[n].p == target_position): 
                 endNodeIndex = n
         
-        Nodes[startNodeIdex].gDist = 0.0
-        Nodes[startNodeIndex].hDist = heuristic(start_position, target_position)
-        Nodes[endNodeIndex].h = 0.0
+        print("start:", startNodeIndex)
+        print("end:", endNodeIndex)
+
+        Nodes[startNodeIndex].lDist = 0.0
+        Nodes[startNodeIndex].gDist = self.heuristic(start_position, target_position)
+        print(Nodes[startNodeIndex].gDist)
         cNI = startNodeIndex
 
         notTestedNI = []
@@ -100,75 +100,71 @@ class RoutePlanner(object):
         notTestedNI.append(startNodeIndex)
         
         #Loop while there are nodes to test
-        while ((not notTestedNodesI)):#and (self.currentN.p != target_position)
+        while (notTestedNI):
             
-            #Remove visited nodes
+            #Set current node to node with the least g distance
+            cNI = notTestedNI[0]
             for n in range(0, len(notTestedNI)):
-                if (Nodes[notTestedNI[n]].visited):
-                    notTestedNI.remove(notTestedNI[n])
-
-            #If list is empty end loop
-            if (not notTestedNI):
-                break
-
-            #Set current node to node with the least g + h distance
-            for n in range(0, len(notTestedNI)):
-                if ((Nodes[cNI].gDist + Nodes[cNI].hDist) > (Nodes[notTestedNI[n]].gDist + Nodes[notTestedNI[n]].hDist)):
+                if (Nodes[cNI].gDist > Nodes[notTestedNI[n]].gDist):
                     cNI = notTestedNI[n]
             
+            #print(cNI)
+            #print(Nodes[cNI].neighbours)
+            Nodes[cNI].visited = True
+            #print(Nodes[cNI].visited)
+            #End loop if path is found
             if cNI == endNodeIndex:
                 break
             
-            Nodes[cNI].visited = True
-
             #Loop through the current nodes' neighbours or "children"
             for n in range(0, len(Nodes[cNI].neighbours)):
                 
                 #Add neighbour to list if it hasn't been visited and isn't an obstacle
                 k = Nodes[cNI].neighbours[n]
-                if ((not Nodes[k].visited) and (not Nodes[k].isObstacle)):
-                    notTestedNI.append(Nodes[k])
+                if ((Nodes[k].visited == False) and (Nodes[k].isObstacle == False)):
+                    if k not in notTestedNI: notTestedNI.append(k)
 
-                possiblyLowerDist = Nodes[cNI].lDist + distance(Nodes[cNI].p, Nodes[k].p)
+                possiblyLowerDist = Nodes[cNI].lDist + self.distance(Nodes[cNI].p, Nodes[k].p)
 
                 if (possiblyLowerDist < Nodes[k].lDist):
                     Nodes[k].parent = cNI
                     Nodes[k].lDist = possiblyLowerDist
-                    Nodes[k].gDist = Nodes[k].lDist + heuristic(Nodes[k].p, target_position)
+                    Nodes[k].gDist = Nodes[k].lDist + self.heuristic(Nodes[k].p, target_position)
+
+            #Remove visited node
+            notTestedNI.remove(cNI)
+            #print(notTestedNI)            
         
         path = []
-
-        while parent != None:
-            x = Nodes[cNI].p.x
-            y = -Nodes[cNI].p.y
-            path.append([x,y])
-            cNI = Nodes[cNI].parent
-
+        if cNI == endNodeIndex:
+            while Nodes[cNI].parent != None:
+                x = Nodes[cNI].p.x
+                y = -Nodes[cNI].p.y
+                path.append([x,y])
+                cNI = Nodes[cNI].parent
+            path.reverse()
         return path
 
     def set_map(self, occupancy_map):
         """Set the map"""
         self.map_grid.set_map(occupancy_map)
         
-
-
 #------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
     def _laser_callback(self, scan):
         x = 0
 
-
     def find_coordinate(self, product):			# Might need more arguments
         """ 
-    Find the coordinate of the given product
-    using the map
-    Return: coordinates of the product
-    """
+        Find the coordinate of the given product
+        using the map
+        Return: coordinates of the product
+        """
         raise NotImplementedError()
 
     def sort(self, products_array):
         """
-    This function sorts the array of products in some order
-    Returns: sorted products_array
-    """
+        This function sorts the array of products in some order
+        Returns: sorted products_array
+        """
         raise NotImplementedError()
 

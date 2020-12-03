@@ -23,8 +23,8 @@ class N:
         self.p = p
         self.isObstacle = v
         self.visited = False
+        self.lDist = 0.0
         self.gDist = 0.0
-        self.hDist = 0.0
         self.neighbours = nb
 
 class MapGrid(object):
@@ -37,7 +37,6 @@ class MapGrid(object):
         self.origin_x = 0.0
         self.origin_y = 0.0
         self.gridNodes = []
-
 
     def set_map(self, occupancy_map):
         
@@ -68,9 +67,8 @@ class MapGrid(object):
         gridAsArray = np.delete(gridAsArray,600,1)
         gridAsArray = np.flip(gridAsArray,0)
 
-        img = Image.fromarray(np.uint8(gridAsArray * 255) , 'L')
-        img.save('main.png',format="png")
-        print("STOP")
+        ##img = Image.fromarray(np.uint8(gridAsArray * 255) , 'L')
+        ##img.save('main.png',format="png")
         lowerResGridAsListOfLists = []
         lowerResGridColorsAsListOfLists = []
 
@@ -96,15 +94,15 @@ class MapGrid(object):
                 colorValues = [nW,nB,nG]
                 maxN = max(colorValues)
                 maxIndex = colorValues.index(maxN)
-                if maxIndex == 0:
-                    lowResRow.append(0)
-                    lowResRowColors.append(1)
-                elif maxIndex == 1:
+                if nB > 0:
                     lowResRow.append(100)
                     lowResRowColors.append(0)
-                elif maxIndex == 2:
+                elif nG > 0:
                     lowResRow.append(-1)
                     lowResRowColors.append(0.5)
+                elif maxIndex == 0:
+                    lowResRow.append(0)
+                    lowResRowColors.append(1)
                 
                 p = Point()
                 p.y = -i/scaleFactor
@@ -112,24 +110,33 @@ class MapGrid(object):
                 if (lowResRow[(len(lowResRow)-1)] == 0):
                     tempNeighbours = []
                     k=0
+                    l=0
+                    u=0
+                    #check for neighbours
                     for nd in range(len(self.gridNodes)-1,-1, -1):
-                        if (self.gridNodes[nd].p.x == ((j/scaleFactor)-1) and self.gridNodes[nd].p.y == -(i/scaleFactor)):
-                            tempNeighbours.append(nd)
-                            self.gridNodes[nd].neighbours.append(len(self.gridNodes))
-                            k=k+1
-                        elif (self.gridNodes[nd].p.x == (j/scaleFactor) and self.gridNodes[nd].p.y == -((i/scaleFactor)-1)):
-                            tempNeighbours.append(nd)
-                            self.gridNodes[nd].neighbours.append(len(self.gridNodes))
-                            k=k+1
-                        elif (self.gridNodes[nd].p.x == ((j/scaleFactor)-1) and self.gridNodes[nd].p.y == -((i/scaleFactor)-1) and k==2):
-                            tempNeighbours.append(nd)
-                            self.gridNodes[nd].neighbours.append(len(self.gridNodes))
-                        if (self.gridNodes[nd].p.x < ((j/scaleFactor)-1) and self.gridNodes[nd].p.y > -((i/scaleFactor)-1)): break
+                        #only check if node is not obstacle
+                        if (not self.gridNodes[nd].isObstacle):
+                            if (self.gridNodes[nd].p.x == ((j/scaleFactor)-1) and self.gridNodes[nd].p.y == -(i/scaleFactor)):
+                                tempNeighbours.append(nd)
+                                self.gridNodes[nd].neighbours.append(len(self.gridNodes))
+                                k=k+1
+                                l=nd
+                            elif (self.gridNodes[nd].p.x == (j/scaleFactor) and self.gridNodes[nd].p.y == -((i/scaleFactor)-1)):
+                                tempNeighbours.append(nd)
+                                self.gridNodes[nd].neighbours.append(len(self.gridNodes))
+                                k=k+1
+                                u=nd
+                            elif (self.gridNodes[nd].p.x == ((j/scaleFactor)-1) and self.gridNodes[nd].p.y == -((i/scaleFactor)-1) and k==2):
+                                tempNeighbours.append(nd)
+                                self.gridNodes[nd].neighbours.append(len(self.gridNodes))
+                                self.gridNodes[l].neighbours.append(u)
+                                self.gridNodes[u].neighbours.append(l) 
+                            if (self.gridNodes[nd].p.x < ((j/scaleFactor)-1) and self.gridNodes[nd].p.y > -((i/scaleFactor)-1)): break
                     node = N(p,tempNeighbours,False)
                     self.gridNodes.append(node)
                 elif (lowResRow[(len(lowResRow)-1)] == 100):
                     self.gridNodes.append(N(p, [], True))
-            
+                       
             lowerResGridAsListOfLists.append(lowResRow)
             lowerResGridColorsAsListOfLists.append(lowResRowColors)
 
@@ -142,10 +149,10 @@ class MapGrid(object):
         img = Image.fromarray(np.uint8(lowResGridColorsAsArray * 255) , 'L')
         img.save('test.png')
 
-        lowResGridColorsAsArray2 = np.rot90(lowResGridColorsAsArray)
+        ##lowResGridColorsAsArray2 = np.rot90(lowResGridColorsAsArray)
 
-        img = Image.fromarray(np.uint8(lowResGridColorsAsArray2 * 255) , 'L')      
-        img.save('test2.png')
+        ##img = Image.fromarray(np.uint8(lowResGridColorsAsArray2 * 255) , 'L')      
+        ##img.save('test2.png')
 
         rospy.loginfo("Map as grid set.")
     
