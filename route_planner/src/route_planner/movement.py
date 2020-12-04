@@ -31,11 +31,6 @@ class Movement(object):
 		"""
 		self.current_pose = odometry.pose
 
-		# add origin offset
-		# not entirely sure why this makes sense, but it seems to be needed
-		self.current_pose.pose.position.x += map_grid.origin_x
-		self.current_pose.pose.position.y += map_grid.origin_y
-
 		if self.rotate_to_target(current_target[0], current_target[1]):	
 			return self.move_to_target(current_target[0], current_target[1])
 

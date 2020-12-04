@@ -70,25 +70,24 @@ def update():
 
 		count = 0
 		for pos in robot._route_planner.path_to_next_item:
-			tmp = [0,0]
-			tmp[0] = pos[0]
-			tmp[1] = pos[1]
 
-			tmp[0] *= MAP_GRID.resolution * 3
-			tmp[1] *= MAP_GRID.resolution * 3
-
-			x, y = rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(tmp[0],tmp[1]), math.pi/2)
+			x = pos[0]
+			y = pos[1]
 
 			if (count == 0):
 				food_item = route_planner.food_item.FoodItem(x, y, "START")
+
 			elif (count == len(robot._route_planner.path_to_next_item)-1):
 				food_item = route_planner.food_item.FoodItem(x, y, "END")
+
 			else:
 				food_item = route_planner.food_item.FoodItem(x, y, "")
 
 			markers += (create_food_marker(food_item, id))
 			id += 2
 			count+=1
+
+		id+=1
 
 	for food_item in FOOD_ITEMS:
 		markers += (create_food_marker(food_item, id))
@@ -135,8 +134,8 @@ def create_robot_marker(robot, id):
 	robotMarkerText.action = 0
 	robotMarkerText.text=robot.name
 
-	robotMarkerText.pose.position.x = robot._route_planner.current_pose.pose.position.x + MAP_GRID.origin_x
-	robotMarkerText.pose.position.y = robot._route_planner.current_pose.pose.position.y + MAP_GRID.origin_y
+	robotMarkerText.pose.position.x = robot._route_planner.current_pose.pose.position.x #+ MAP_GRID.origin_x
+	robotMarkerText.pose.position.y = robot._route_planner.current_pose.pose.position.y #+ MAP_GRID.origin_y
 	# give z of 2 so the text is above other markers
 	robotMarkerText.pose.position.z = 2
 
@@ -163,9 +162,10 @@ def create_food_marker(food_item, id):
 	foodMarker.type = 2
 	foodMarker.action = 0
 
-	# need to add offset to marker position
-	foodMarker.pose.position.x = food_item.x
-	foodMarker.pose.position.y = food_item.y
+	# convert to real-world position so marker is displayed in correct place
+	real_x, real_y = MAP_GRID.matrix_to_real(food_item.x, food_item.y)
+	foodMarker.pose.position.x = real_x
+	foodMarker.pose.position.y = real_y
 
 	foodMarker.lifetime = rospy.Duration(0)
 	
@@ -189,8 +189,8 @@ def create_food_marker(food_item, id):
 	foodMarkerText.action = 0
 	foodMarkerText.text=food_item.label
 
-	foodMarkerText.pose.position.x = food_item.x
-	foodMarkerText.pose.position.y = food_item.y
+	foodMarkerText.pose.position.x = real_x
+	foodMarkerText.pose.position.y = real_y
 	# give z of 2 so the text is above other markers
 	foodMarkerText.pose.position.z = 2
 
@@ -207,19 +207,6 @@ def create_food_marker(food_item, id):
 
 	return [foodMarker, foodMarkerText]
 
-def rotate(origin, point, angle):
-	"""
-	Rotate a point counterclockwise by a given angle around a given origin.
-	The angle should be given in radians.
-	Needed because the map is offset by 90 degrees, so any points ww display in rviz need to be rotated
-	"""
-	ox, oy = origin
-	px, py = point
-
-	qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
-	qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
-	return qx, qy
-
 def place_food():
 	"""
 	Place food around the map. Placed near walls (to replicate being on a shelf)
@@ -228,21 +215,55 @@ def place_food():
 	"""
 	print("Placing food")
 	food_to_place = 5
-	minDistance = 20
-	maxDistance = 25
+	minDistance = 15
+	maxDistance = 20
 
-	while (food_to_place >= 0):
+	walls = []
+	spaces = []
+
+	for wall in MAP_GRID.walls:
+
+		# list of walls has not been resolution-reduced, so have to do that here
+		x = wall[0] / MAP_GRID.resolution_reduction_scale
+		y = wall[1] / MAP_GRID.resolution_reduction_scale
+
+		# for some reason the list of walls is rotated by 180 instead if 90 as expected
+		x,y = MAP_GRID.rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(x,y), math.pi)
+
+		# rotating back to normal causes it to be off-centre, so now add this trial-and-errored amount of origins
+		x += (MAP_GRID.origin_x*11.25)
+		y += (MAP_GRID.origin_y*11.25)
+
+		walls.append([x,y])
+
+	# repeat process for open spaces
+	for space in MAP_GRID.openNodes:
+
+		# list of walls has not been resolution-reduced, so have to do that here
+		x = space[0] / MAP_GRID.resolution_reduction_scale
+		y = space[1] / MAP_GRID.resolution_reduction_scale
+
+		# for some reason the list of walls is rotated by 180 instead if 90 as expected
+		x,y = MAP_GRID.rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(x,y), math.pi)
+
+		# rotating back to normal causes it to be off-centre, so now add this trial-and-errored amount of origins
+		x += (MAP_GRID.origin_x*11.25)
+		y += (MAP_GRID.origin_y*11.25)
+
+		spaces.append([x,y])
+
+	# because a while loop is used, having an iteration limit to prevent freezing if no spaces can be found for food
+	allowed_its = food_to_place * 50
+	while (food_to_place > 0 and allowed_its > 0):
+
 		# choose random wall from map
-		randindex = random.randrange(0, len(MAP_GRID.walls))
-		coords = MAP_GRID.walls[randindex]
+		randindex = random.randrange(0, len(walls))
+		coords = walls[randindex]
 
 		food_placed = False
 
-		x = (coords[0]*MAP_GRID.resolution)
-		y = (coords[1]*MAP_GRID.resolution)
-
 		# then find nearby open space
-		for space in MAP_GRID.openNodes:
+		for space in spaces:
 			# check distance
 			dist = math.sqrt( (coords[0] - space[0])**2 + (coords[1] - space[1])**2 )
 
@@ -252,38 +273,45 @@ def place_food():
 				valid = True
 				# check that this space is not too close to another food item
 				for food in FOOD_ITEMS:
-					dist = math.sqrt( (food.x/MAP_GRID.resolution - space[0])**2 + (food.y/MAP_GRID.resolution - space[1])**2 )
+					dist = math.sqrt( (food.x - space[0])**2 + (food.y - space[1])**2 )
+					#print(dist)
 					if (dist < minDistance):
 						valid = False
 						break
 
 				if (valid):
 					# finally, check the surrounding space is clear of walls
-					finalCheck = check_surroundings(space[0], space[1], minDistance)
+					finalCheck = check_surroundings(int(space[0]), int(space[1]), minDistance)
 
 					if (finalCheck):
-						food_placed = True
-						x = (space[0]*MAP_GRID.resolution)
-						y = (space[1]*MAP_GRID.resolution)
+						# add food item to global list
+						f = route_planner.food_item.FoodItem(space[0],space[1],"food")
+						FOOD_ITEMS.append(f)
+
+						# update how many food items are left to place
+						food_to_place-=1
 						break
-
-		# it's possible that no space was available to place the food, in this case, don't add anything
-		if (food_placed):
-			# coordinates need to be rotated by 90 degrees
-			x,y = rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(x,y), -math.pi/2)
-
-			# add food item to global list
-			f = route_planner.food_item.FoodItem(x,y,"food")
-			FOOD_ITEMS.append(f)
-
-			# update how many food items are left to place
-			food_to_place-=1
+		allowed_its-=1
+			
 
 def check_surroundings(origin_x, origin_y, area_size):
 	"""
 	Given a pair of coordinates, check the surrounding area in the occupany map.
 	Return True if all surrounding space is empty
 	"""
+
+	# because of the crazy transormations that needed appyling earlier, now need to undo
+	origin_x -= (MAP_GRID.origin_x*11.25)
+	origin_y -= (MAP_GRID.origin_y*11.25)
+
+	origin_x,origin_y = MAP_GRID.rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(origin_x,origin_y), math.pi)
+
+	x = int(origin_x * MAP_GRID.resolution_reduction_scale)
+	y = int(origin_y * MAP_GRID.resolution_reduction_scale)
+
+	# lower areas sizes don't work so well, so increase here
+	area_size = int(area_size*1.5)
+
 	for x in range (-area_size, area_size):
 		newX = x + origin_x
 		if (newX > 0 and newX < len(MAP_GRID.OC_GRID_TEMP[0])):
@@ -292,7 +320,7 @@ def check_surroundings(origin_x, origin_y, area_size):
 				newY = y + origin_y
 
 				if (newY > 0 and newY < len(MAP_GRID.OC_GRID_TEMP[1])):
-					value = MAP_GRID.OC_GRID_TEMP[newX, newY]
+					value = MAP_GRID.OC_GRID_TEMP[int(newX), int(newY)]
 					if not (value == 0):
 						return False
 	return True
@@ -315,6 +343,8 @@ if __name__ == '__main__':
 	MAP_GRID =  route_planner.map_grid.MapGrid()
 	MAP_GRID.set_map(ocuccupancy_map)
 	place_food()
+
+
 
 
 	placeholder_shopping_list = []

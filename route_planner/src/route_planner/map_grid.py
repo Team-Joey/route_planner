@@ -354,4 +354,35 @@ class MapGrid(object):
         #self.output_greyscale_image_from_array(self.expand_walls(gridAsArray,0),'expanded_walls_e0.png')
         
         #print(infoArray[3])
+
+    def rotate(self, origin, point, angle):
+    	ox, oy = origin
+    	px, py = point
+
+    	qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
+    	qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
+    	return qx, qy
+
+    def real_to_matrix(self, x, y):
+    	"""
+		Rotate by -90 degrees, then undo the resolution scaling fators
+		"""
+
+    	newx, newy = self.rotate((self.origin_x,self.origin_y),(x,y), -math.pi/2)
+
+    	newx = (newx / self.resolution) / self.resolution_reduction_scale
+    	newy = (newy / self.resolution) / self.resolution_reduction_scale
+    	return (newx, newy)
+
+    def matrix_to_real(self, x, y):
+    	"""
+		Rotate by +90 degrees, then apply the resolution scaling fators
+		"""
+    	x *= self.resolution * self.resolution_reduction_scale
+    	y *= self.resolution * self.resolution_reduction_scale
+
+    	x, y = self.rotate((self.origin_x,self.origin_y),(x,y), math.pi/2)
+
+    	return (x, y)
         
+	

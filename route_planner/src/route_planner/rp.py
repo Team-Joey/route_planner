@@ -27,9 +27,7 @@ class RoutePlanner(object):
 
 		self.map_grid = map_grid
 
-		self.path_to_next_item = self.A_star(s,e)
-
-		#print(self.path_to_next_item)
+		self.path_to_next_item = []#self.A_star(s,e)
 
 		self.shopping_list = shopping_list
 
@@ -39,18 +37,7 @@ class RoutePlanner(object):
 		self.movement = route_planner.movement.Movement(_cmd_vel)
 
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
-	def rotate(self, origin, point, angle):
-		"""
-		Rotate a point counterclockwise by a given angle around a given origin.
-		The angle should be given in radians.
-		Needed because the map is offset by 90 degrees, so any points ww display in rviz need to be rotated
-		"""
-		ox, oy = origin
-		px, py = point
 
-		qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
-		qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
-		return qx, qy
 
 
 	def receive_map_update(self, map_grid):
@@ -65,27 +52,32 @@ class RoutePlanner(object):
 		"""
 		self.current_pose = odometry.pose
 
+		# the default origin for the robot is 0,0 so need to add offset
+		self.current_pose.pose.position.x += self.map_grid.origin_x
+		self.current_pose.pose.position.y += self.map_grid.origin_y
+
 		if len(self.path_to_next_item) == 0: 
+			self.path_to_next_item = self.new_path()
 			print("Finished path, either we are done or need to get path to next item")
 
 		else:
+			# next position on the current path, matrix position
 			current_target = self.path_to_next_item[0]
 
-			# need to convert target matrix position into a real-world rviz position
-			# achieve this by scaling by resolution (and the resolution reduction scaling)
-			# then rotate about the origin
-			adjusted_target = [current_target[0], current_target[1]]
+			real_x, real_y = self.map_grid.matrix_to_real(current_target[0], current_target[1])
 
-			adjusted_target[0] *= self.map_grid.resolution * self.map_grid.resolution_reduction_scale
-			adjusted_target[1] *= self.map_grid.resolution * self.map_grid.resolution_reduction_scale
+			# convert to real-world pos so movement.py can deal with it
+			#adjusted_target = [current_target[0], current_target[1]]
 
-			x, y = self.rotate((self.map_grid.origin_x,self.map_grid.origin_y),(adjusted_target[0],adjusted_target[1]), math.pi/2)
+			#adjusted_target[0] *= self.map_grid.resolution * self.map_grid.resolution_reduction_scale
+			#adjusted_target[1] *= self.map_grid.resolution * self.map_grid.resolution_reduction_scale
 
-			adjusted_target[0] = x
-			adjusted_target[1] = y
+			#x, y = self.rotate((self.map_grid.origin_x,self.map_grid.origin_y),(adjusted_target[0],adjusted_target[1]), math.pi/2)
+
+			real_target = [real_x, real_y]
 
 			# call the movement function, returns true if robot has reached target
-			if (self.movement.movement_update(adjusted_target, odometry, self.map_grid)):
+			if (self.movement.movement_update(real_target, odometry, self.map_grid)):
 
 				self.path_to_next_item.remove(current_target)
 
@@ -93,6 +85,16 @@ class RoutePlanner(object):
 					# ---- Change target and remove it from task list
 					current_target = self.path_to_next_item[0]
 
+	def new_path(self):
+
+		#startx, starty = self.real_to_matrix()
+		
+		#s = Point(startx, starty)
+
+		#e = Point(50,-50,0)
+
+		#self.A_star(s,e)
+		return []
 # ----------------------------------------------------------------------------
 
 	def distance(self, p1, p2):
