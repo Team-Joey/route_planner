@@ -25,11 +25,17 @@ class Movement(object):
 
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 
-	def movement_update(self, current_target, odometry):
+	def movement_update(self, current_target, odometry, map_grid):
 		"""
 		Move/rotate the robot towards the given target
 		"""
 		self.current_pose = odometry.pose
+
+		# add origin offset
+		# not entirely sure why this makes sense, but it seems to be needed
+		self.current_pose.pose.position.x += map_grid.origin_x
+		self.current_pose.pose.position.y += map_grid.origin_y
+
 		if self.rotate_to_target(current_target[0], current_target[1]):	
 			return self.move_to_target(current_target[0], current_target[1])
 
@@ -147,4 +153,5 @@ class Movement(object):
 			return False
 		if (abs(y - self.current_pose.pose.position.y) > EPHSILON):
 			return False
+
 		return True

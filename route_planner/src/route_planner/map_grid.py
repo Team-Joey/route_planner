@@ -343,8 +343,8 @@ class MapGrid(object):
 
         #Output for testing
         #self.output_rgb_image_from_array(gridAsArray,'a')
-
-        infoArray = self.reduce_resolution(gridAsArray,3,3)
+        self.resolution_reduction_scale = 3
+        infoArray = self.reduce_resolution(gridAsArray,self.resolution_reduction_scale,self.resolution_reduction_scale)
         self.output_rgb_image_from_array(infoArray[0], 'a')
         
         #infoArray = self.reduce_resolution_weighted(gridAsArray, 1, 3, 3)
