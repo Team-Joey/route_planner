@@ -8,6 +8,7 @@ import 	math
 from 	math 			import cos, sin
 import 	route_planner.movement
 import 	math
+import 	random
 
 class RoutePlanner(object):
 
@@ -21,13 +22,9 @@ class RoutePlanner(object):
 		
 		self.current_pose.header.frame_id = "/map"
 
-		s = Point(140,-130,0)
-
-		e = Point(50,-50,0)
-
 		self.map_grid = map_grid
 
-		self.path_to_next_item = []#self.A_star(s,e)
+		self.path_to_next_item = []
 
 		self.shopping_list = shopping_list
 
@@ -57,9 +54,8 @@ class RoutePlanner(object):
 		self.current_pose.pose.position.y += self.map_grid.origin_y
 
 		if len(self.path_to_next_item) == 0: 
-			self.path_to_next_item = self.new_path()
-			print("Finished path, either we are done or need to get path to next item")
-
+				print("Finished path, either we are done or need to get path to next item")
+				self.path_to_next_item = self.new_path()
 		else:
 			# next position on the current path, matrix position
 			current_target = self.path_to_next_item[0]
@@ -86,15 +82,36 @@ class RoutePlanner(object):
 					current_target = self.path_to_next_item[0]
 
 	def new_path(self):
+		print("Getting path to random food item")
+		self.has_requested_new_path = True
+		# convert current position to matrix
+		startx, starty = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
 
-		#startx, starty = self.real_to_matrix()
-		
-		#s = Point(startx, starty)
+		s = Point(startx, -starty, 0)
 
-		#e = Point(50,-50,0)
+		# choose random food item from shopping list as target
+		randindex = random.randrange(0, len(self.shopping_list))
+		f = self.shopping_list[randindex]
 
-		#self.A_star(s,e)
-		return []
+		# NOTE: converting to integer is needed otherwise path will not be found
+		e = Point(int(f.x),int(-f.y),0)
+
+		path = self.A_star(s,e)
+
+		# cut out some waypoints, slows robot down a lot otherwise
+		trimmed_path = []
+
+		# ratio is how many waypoints will be skipped when trimming 
+		ratio = 2
+
+		count = 0
+		for pos in path:
+			if (count == ratio):
+				count = 0
+				trimmed_path.append(pos)
+			count += 1
+
+		return trimmed_path
 # ----------------------------------------------------------------------------
 
 	def distance(self, p1, p2):
@@ -181,6 +198,7 @@ class RoutePlanner(object):
 				path.append([x,y])
 				cNI = Nodes[cNI].parent
 			path.reverse()
+
 		return path
 
 	def set_map(self, occupancy_map):
@@ -206,4 +224,3 @@ class RoutePlanner(object):
 	Returns: sorted products_array
 	"""
 		raise NotImplementedError()
-

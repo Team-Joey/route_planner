@@ -285,7 +285,7 @@ def place_food():
 
 					if (finalCheck):
 						# add food item to global list
-						f = route_planner.food_item.FoodItem(space[0],space[1],"food")
+						f = route_planner.food_item.FoodItem(space[0],space[1],"food " + str(space[0]) + ", " + str(space[1]))
 						FOOD_ITEMS.append(f)
 
 						# update how many food items are left to place
@@ -344,10 +344,9 @@ if __name__ == '__main__':
 	MAP_GRID.set_map(ocuccupancy_map)
 	place_food()
 
+	# add all food items to all robots' shopping lists for now
+	placeholder_shopping_list = FOOD_ITEMS
 
-
-
-	placeholder_shopping_list = []
 	# get all published topics
 	# find how many robots are active
 	topics = rospy.get_published_topics()
