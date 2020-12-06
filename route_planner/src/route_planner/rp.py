@@ -195,7 +195,7 @@ class RoutePlanner(object):
 			while Nodes[cNI].parent != None:
 				x = Nodes[cNI].p.x
 				y = -Nodes[cNI].p.y
-				path.append([x,y])
+				path.append([y,x])
 				cNI = Nodes[cNI].parent
 			path.reverse()
 
