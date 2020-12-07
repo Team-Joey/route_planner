@@ -15,13 +15,13 @@ class Movement(object):
 		# how close do two rotations need to get (in radians) before they are considered equal
 		self.rotation_close_enough_threshold = 0.001
 		# if the difference between two angles is less than this threshold, robot will slow down rot speed
-		self.rotation_slow_threshold = 0.5
-		self.angularSpeed = 10
+		self.rotation_slow_threshold = 0.25
+		self.angularSpeed = 100
 
 		# if the distance to next position in the path is less than this value, robot will slow down
 		self.distance_close_enough_threshold = 0.05
-		self.movement_slow_threshold = 0.25
-		self.linearSpeed = 10
+		self.movement_slow_threshold = 0.125
+		self.linearSpeed = 100
 
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 

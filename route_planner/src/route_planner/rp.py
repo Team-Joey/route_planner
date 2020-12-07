@@ -94,7 +94,7 @@ class RoutePlanner(object):
 		trimmed_path = []
 
 		# ratio is how many waypoints will be skipped when trimming 
-		ratio = 2
+		ratio = 4
 
 		count = 0
 		for pos in path:
