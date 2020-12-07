@@ -74,17 +74,17 @@ def update():
 			x = pos[0]
 			y = pos[1]
 
-			if (count == 0):
-				food_item = route_planner.food_item.FoodItem(x, y, "START")
+			#if (count == 0):
+			#	food_item = route_planner.food_item.FoodItem(x, y, "START")
 
-			elif (count == len(robot._route_planner.path_to_next_item)-1):
-				food_item = route_planner.food_item.FoodItem(x, y, "END")
+			#elif (count == len(robot._route_planner.path_to_next_item)-1):
+			#	food_item = route_planner.food_item.FoodItem(x, y, "END")
 
-			else:
-				food_item = route_planner.food_item.FoodItem(x, y, "")
+			#else:
+			#food_item = route_planner.food_item.FoodItem(x, y, "")
 
-			markers += (create_food_marker(food_item, id))
-			id += 2
+			markers.append(create_path_marker(x,y,id))#(create_food_marker(food_item, id))
+			id += 1
 			count+=1
 
 		id+=1
@@ -96,6 +96,33 @@ def update():
 		id += 2
 
 	MARKER_PUB.publish(markers)
+
+def create_path_marker(x,y,id):
+	marker = Marker()
+	marker.header.frame_id = "/map"
+	marker.header.stamp    = rospy.get_rostime()
+	#marker.ns = robot.name
+	marker.id = id
+	marker.type = 1 # sphere
+	marker.action = 0
+
+	# need to add offset to marker position
+	real_x, real_y = MAP_GRID.matrix_to_real(x, y)
+	marker.pose.position.x = real_x
+	marker.pose.position.y = real_y
+
+	marker.lifetime = rospy.Duration(0)
+	
+	marker.scale.x = 0.25
+	marker.scale.y = 0.25
+	marker.scale.z = 0.25
+
+	marker.color.r = 1.0
+	marker.color.g = 1.0
+	marker.color.b = 0.0
+	marker.color.a = 1.0
+
+	return marker
 
 # returns an array containing a shape marker and a text marker
 def create_robot_marker(robot, id):
@@ -163,7 +190,7 @@ def create_food_marker(food_item, id):
 	foodMarker.action = 0
 
 	# convert to real-world position so marker is displayed in correct place
-	real_x, real_y = MAP_GRID.matrix_to_real(food_item.x, food_item.y)
+	real_x, real_y = MAP_GRID.matrix_to_real(food_item.y, food_item.x)
 	foodMarker.pose.position.x = real_x
 	foodMarker.pose.position.y = real_y
 
@@ -214,7 +241,7 @@ def place_food():
 	maxDistance is max
 	"""
 	print("Placing food")
-	food_to_place = 5
+	food_to_place = 1
 	minDistance = 15
 	maxDistance = 20
 
@@ -285,7 +312,7 @@ def place_food():
 
 					if (finalCheck):
 						# add food item to global list
-						f = route_planner.food_item.FoodItem(space[0],space[1],"food " + str(space[0]) + ", " + str(space[1]))
+						f = route_planner.food_item.FoodItem(space[0],space[1],"food " + str(int(161)) + ", " + str(int(20)))
 						FOOD_ITEMS.append(f)
 
 						# update how many food items are left to place

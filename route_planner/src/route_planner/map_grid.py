@@ -438,7 +438,7 @@ class MapGrid(object):
     	newx = (newx / self.resolution) / self.resolution_reduction_scale
     	newy = (newy / self.resolution) / self.resolution_reduction_scale
 
-    	return (int(newx), int(newy))
+    	return (int(newy), int(newx))
 
     def matrix_to_real(self, x, y):
     	"""
