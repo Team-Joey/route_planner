@@ -408,7 +408,7 @@ class MapGrid(object):
         #infoArray = self.reduce_resolution(gridAsArray,self.resolution_reduction_scale,self.resolution_reduction_scale)
         #self.output_rgb_image_from_array(infoArray[0], 'a')
         
-        #gridAsArray = self.expand_walls(gridAsArray,5)
+        gridAsArray = self.expand_walls(gridAsArray,10)
         infoArray = self.reduce_resolution_weighted(gridAsArray, self.resolution_reduction_scale, self.resolution_reduction_scale, 3)
         self.gridArray = infoArray[0]
         #self.output_rgb_image_from_array(infoArray[0], 'a')
@@ -438,7 +438,7 @@ class MapGrid(object):
     	newx = (newx / self.resolution) / self.resolution_reduction_scale
     	newy = (newy / self.resolution) / self.resolution_reduction_scale
 
-    	return (int(newy), int(newx))
+    	return (math.ceil(newy), math.ceil(newx))
 
     def matrix_to_real(self, x, y):
     	"""

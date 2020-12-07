@@ -241,7 +241,7 @@ def place_food():
 	maxDistance is max
 	"""
 	print("Placing food")
-	food_to_place = 1
+	food_to_place = 50
 	minDistance = 15
 	maxDistance = 20
 
@@ -284,11 +284,15 @@ def place_food():
 	while (food_to_place > 0 and allowed_its > 0):
 
 		# choose random wall from map
-		randindex = random.randrange(0, len(walls))
-		coords = walls[randindex]
+		randindex = random.randrange(0, len(spaces))
+		coords = spaces[randindex]
 
 		food_placed = False
 
+		f = route_planner.food_item.FoodItem(coords[0],coords[1],"food " )
+		FOOD_ITEMS.append(f)
+		food_to_place-=1
+		"""
 		# then find nearby open space
 		for space in spaces:
 			# check distance
@@ -319,7 +323,7 @@ def place_food():
 						food_to_place-=1
 						break
 		allowed_its-=1
-			
+		"""
 
 def check_surroundings(origin_x, origin_y, area_size):
 	"""
@@ -337,7 +341,7 @@ def check_surroundings(origin_x, origin_y, area_size):
 	y = int(origin_y * MAP_GRID.resolution_reduction_scale)
 
 	# lower areas sizes don't work so well, so increase here
-	area_size = int(area_size*1.5)
+	area_size = int(area_size*3)
 
 	for x in range (-area_size, area_size):
 		newX = x + origin_x

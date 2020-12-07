@@ -62,14 +62,6 @@ class RoutePlanner(object):
 
 			real_x, real_y = self.map_grid.matrix_to_real(current_target[0], current_target[1])
 
-			# convert to real-world pos so movement.py can deal with it
-			#adjusted_target = [current_target[0], current_target[1]]
-
-			#adjusted_target[0] *= self.map_grid.resolution * self.map_grid.resolution_reduction_scale
-			#adjusted_target[1] *= self.map_grid.resolution * self.map_grid.resolution_reduction_scale
-
-			#x, y = self.rotate((self.map_grid.origin_x,self.map_grid.origin_y),(adjusted_target[0],adjusted_target[1]), math.pi/2)
-
 			real_target = [real_x, real_y]
 
 			# call the movement function, returns true if robot has reached target
@@ -199,7 +191,7 @@ class RoutePlanner(object):
 				cNI = Nodes[cNI].parent
 			path.reverse()
 
-		self.map_grid.output_rgb_path_image(self.map_grid.gridArray, path, 'a.png')
+		#self.map_grid.output_rgb_path_image(self.map_grid.gridArray, path, 'a.png')
 
 		return path
 
