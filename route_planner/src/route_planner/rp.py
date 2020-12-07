@@ -199,6 +199,8 @@ class RoutePlanner(object):
 				cNI = Nodes[cNI].parent
 			path.reverse()
 
+		self.map_grid.output_rgb_path_image(self.map_grid.gridArray, path, 'a.png')
+
 		return path
 
 	def set_map(self, occupancy_map):

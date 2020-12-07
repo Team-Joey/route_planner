@@ -40,6 +40,7 @@ class MapGrid(object):
         self.origin_x = 0.0
         self.origin_y = 0.0
         self.gridNodes = []
+        self.gridArray = np.array([])
         
     def get_map_as_lists(self, inList, height, width):
     
@@ -94,6 +95,35 @@ class MapGrid(object):
         
     def output_rgb_image_from_array(self, imageArray, outputDestination):
         coloursColumns = []
+        
+        for x in range(0, len(imageArray)):
+            coloursRow = []
+            for y in range(0, len(imageArray[0])):
+                if imageArray[x][y] == 0:
+                    row = (np.uint8(255), np.uint8(255), np.uint8(255), np.uint8(255))
+                    coloursRow.append(row)
+                elif imageArray[x][y] == 100:
+                    row = (np.uint8(0), np.uint8(0), np.uint8(0), np.uint8(255))
+                    coloursRow.append(row)
+                elif imageArray[x][y] == -1:
+                    row = (np.uint8(127), np.uint8(127), np.uint8(127), np.uint8(255))
+                    coloursRow.append(row)
+                elif imageArray[x][y] == 50:
+                    row = (np.uint8(0), np.uint8(255), np.uint8(0), np.uint8(255))
+                    coloursRow.append(row)
+            coloursColumns.append(coloursRow)
+                    
+        coloursArray = np.asarray(coloursColumns)
+        coloursArray = np.reshape(coloursArray,(len(imageArray), len(imageArray[0]), 4))
+        
+        img = Image.fromarray(coloursArray)
+        img.show()
+        
+    def output_rgb_path_image(self, imageArray, pathArray, outputDestination):
+        coloursColumns = []
+        
+        for element in pathArray:
+            imageArray[element[0]][element[1]] = 50 #x and y might need flipping
         
         for x in range(0, len(imageArray)):
             coloursRow = []
@@ -370,6 +400,7 @@ class MapGrid(object):
         
         #Reduced dimensions, more prime factors, different options of resolution reduction
         gridAsArray = self.trim_map(gridAsListOfLists, self.height, self.width)
+        
 
         #Output for testing
         #self.output_rgb_image_from_array(gridAsArray,'a')
@@ -377,9 +408,11 @@ class MapGrid(object):
         #infoArray = self.reduce_resolution(gridAsArray,self.resolution_reduction_scale,self.resolution_reduction_scale)
         #self.output_rgb_image_from_array(infoArray[0], 'a')
         
-        gridAsArray = self.expand_walls(gridAsArray,5)
-        infoArray = self.reduce_resolution_weighted(gridAsArray, self.resolution_reduction_scale, self.resolution_reduction_scale, 1)
-        self.output_rgb_image_from_array(infoArray[0], 'a')
+        #gridAsArray = self.expand_walls(gridAsArray,5)
+        infoArray = self.reduce_resolution_weighted(gridAsArray, self.resolution_reduction_scale, self.resolution_reduction_scale, 3)
+        self.gridArray = infoArray[0]
+        #self.output_rgb_image_from_array(infoArray[0], 'a')
+        
 
         #self.output_greyscale_image_from_array(infoArray[1], 'notres_reduced_weighted3_greyscale.png')
         
