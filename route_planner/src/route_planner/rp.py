@@ -32,7 +32,6 @@ class RoutePlanner(object):
 
 		# create a movement object set_mapwhich will handle all translation and rotation of the robot
 		self.movement = route_planner.movement.Movement(_cmd_vel)
-
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 
 
@@ -49,11 +48,14 @@ class RoutePlanner(object):
 		"""
 		self.current_pose = odometry.pose
 
-		# the default origin for the robot is 0,0 so need to add offset
+		# before adding origin, odom needs to be scaled 
+		scalefactor = 0.725
+
+		self.current_pose.pose.position.x *= scalefactor
+		self.current_pose.pose.position.y *= scalefactor
+
 		self.current_pose.pose.position.x += self.map_grid.origin_x
 		self.current_pose.pose.position.y += self.map_grid.origin_y
-
-		print(self.current_pose.pose.position)
 
 		if len(self.path_to_next_item) == 0: 
 				print("Finished path, either we are done or need to get path to next item")

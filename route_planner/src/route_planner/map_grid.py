@@ -430,7 +430,7 @@ class MapGrid(object):
 
     def real_to_matrix(self, x, y):
     	"""
-		Rotate by -90 degrees, then undo the resolution scaling fators
+		Rotate by 90 degrees, then undo the resolution scaling fators
 		"""
 
     	newx, newy = self.rotate((self.origin_x,self.origin_y),(x,y), math.pi/2)
@@ -442,7 +442,7 @@ class MapGrid(object):
 
     def matrix_to_real(self, x, y):
     	"""
-		Rotate by +90 degrees, then apply the resolution scaling fators
+		Rotate by -90 degrees, then apply the resolution scaling fators
 		"""
     	x *= self.resolution * self.resolution_reduction_scale
     	y *= self.resolution * self.resolution_reduction_scale

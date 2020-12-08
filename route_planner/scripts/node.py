@@ -135,7 +135,6 @@ def create_robot_marker(robot, id):
 	robotMarker.action = 0
 
 	# need to add offset to marker position
-	print("USING: " + str(robot._route_planner.current_pose.pose.position))
 	robotMarker.pose.position.x = robot._route_planner.current_pose.pose.position.x
 	robotMarker.pose.position.y = robot._route_planner.current_pose.pose.position.y
 	robotMarker.pose.orientation = robot._route_planner.current_pose.pose.orientation
@@ -242,101 +241,49 @@ def place_food():
 	maxDistance is max
 	"""
 	print("Placing food")
-	food_to_place = 50
+	food_to_place = 20
 	minDistance = 15
 	maxDistance = 20
 
-	walls = []
 	spaces = []
-
-	for wall in MAP_GRID.walls:
-
-		# list of walls has not been resolution-reduced, so have to do that here
-		x = wall[0] / MAP_GRID.resolution_reduction_scale
-		y = wall[1] / MAP_GRID.resolution_reduction_scale
-
-		# for some reason the list of walls is rotated by 180 instead if 90 as expected
-		x,y = MAP_GRID.rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(x,y), math.pi)
-
-		# rotating back to normal causes it to be off-centre, so now add this trial-and-errored amount of origins
-		x += (MAP_GRID.origin_x*11.25)
-		y += (MAP_GRID.origin_y*11.25)
-
-		walls.append([x,y])
 
 	# repeat process for open spaces
 	for space in MAP_GRID.openNodes:
 
 		# list of walls has not been resolution-reduced, so have to do that here
-		x = space[0] / MAP_GRID.resolution_reduction_scale
-		y = space[1] / MAP_GRID.resolution_reduction_scale
-
-		# for some reason the list of walls is rotated by 180 instead if 90 as expected
-		x,y = MAP_GRID.rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(x,y), math.pi)
-
-		# rotating back to normal causes it to be off-centre, so now add this trial-and-errored amount of origins
-		x += (MAP_GRID.origin_x*11.25)
-		y += (MAP_GRID.origin_y*11.25)
+		x = space[1] / MAP_GRID.resolution_reduction_scale
+		y = space[0] / MAP_GRID.resolution_reduction_scale
 
 		spaces.append([x,y])
 
 	# because a while loop is used, having an iteration limit to prevent freezing if no spaces can be found for food
-	allowed_its = food_to_place * 50
+	allowed_its = food_to_place * 100
 	while (food_to_place > 0 and allowed_its > 0):
 
 		# choose random wall from map
 		randindex = random.randrange(0, len(spaces))
 		coords = spaces[randindex]
 
-		food_placed = False
+		if check_surroundings(coords[1], coords[0], minDistance):
+			# check that this space is not too close to another food item
+			valid = True
+			for food in FOOD_ITEMS:
+				dist = math.sqrt( (food.x - coords[0])**2 + (food.y - coords[1])**2 )
+				if (dist < minDistance):
+					valid = False
+					break
+			if (valid):
+				f = route_planner.food_item.FoodItem(coords[0],coords[1],"food " )
+				FOOD_ITEMS.append(f)
+				food_to_place-=1
 
-		f = route_planner.food_item.FoodItem(coords[0],coords[1],"food " )
-		FOOD_ITEMS.append(f)
-		food_to_place-=1
-		"""
-		# then find nearby open space
-		for space in spaces:
-			# check distance
-			dist = math.sqrt( (coords[0] - space[0])**2 + (coords[1] - space[1])**2 )
-
-			# if the current space is close to a wall, but not too close, use this space
-			if (dist < maxDistance and dist > minDistance):
-
-				valid = True
-				# check that this space is not too close to another food item
-				for food in FOOD_ITEMS:
-					dist = math.sqrt( (food.x - space[0])**2 + (food.y - space[1])**2 )
-					#print(dist)
-					if (dist < minDistance):
-						valid = False
-						break
-
-				if (valid):
-					# finally, check the surrounding space is clear of walls
-					finalCheck = check_surroundings(int(space[0]), int(space[1]), minDistance)
-
-					if (finalCheck):
-						# add food item to global list
-						f = route_planner.food_item.FoodItem(space[0],space[1],"food " + str(int(161)) + ", " + str(int(20)))
-						FOOD_ITEMS.append(f)
-
-						# update how many food items are left to place
-						food_to_place-=1
-						break
-		allowed_its-=1
-		"""
+		allowed_its -= 1
 
 def check_surroundings(origin_x, origin_y, area_size):
 	"""
 	Given a pair of coordinates, check the surrounding area in the occupany map.
 	Return True if all surrounding space is empty
 	"""
-
-	# because of the crazy transormations that needed appyling earlier, now need to undo
-	origin_x -= (MAP_GRID.origin_x*11.25)
-	origin_y -= (MAP_GRID.origin_y*11.25)
-
-	origin_x,origin_y = MAP_GRID.rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(origin_x,origin_y), math.pi)
 
 	x = int(origin_x * MAP_GRID.resolution_reduction_scale)
 	y = int(origin_y * MAP_GRID.resolution_reduction_scale)
