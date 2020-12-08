@@ -71,8 +71,8 @@ def update():
 		count = 0
 		for pos in robot._route_planner.path_to_next_item:
 
-			x = pos[0]
-			y = pos[1]
+			x = pos[1]
+			y = pos[0]
 
 			if (count == 0):
 				food_item = route_planner.food_item.FoodItem(x, y, "START")
@@ -213,47 +213,15 @@ def place_food():
 	minDistance is min distance food can be from a wall or other food item
 	maxDistance is max
 	"""
-	print("Placing food")
 	food_to_place = 5
-	minDistance = 15
-	maxDistance = 20
+	minDistance = 3
+	maxDistance = 4
 
-	walls = []
-	spaces = []
-
-	for wall in MAP_GRID.walls:
-
-		# list of walls has not been resolution-reduced, so have to do that here
-		x = wall[0] / MAP_GRID.resolution_reduction_scale
-		y = wall[1] / MAP_GRID.resolution_reduction_scale
-
-		# for some reason the list of walls is rotated by 180 instead if 90 as expected
-		x,y = MAP_GRID.rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(x,y), math.pi)
-
-		# rotating back to normal causes it to be off-centre, so now add this trial-and-errored amount of origins
-		x += (MAP_GRID.origin_x*11.25)
-		y += (MAP_GRID.origin_y*11.25)
-
-		walls.append([x,y])
-
-	# repeat process for open spaces
-	for space in MAP_GRID.openNodes:
-
-		# list of walls has not been resolution-reduced, so have to do that here
-		x = space[0] / MAP_GRID.resolution_reduction_scale
-		y = space[1] / MAP_GRID.resolution_reduction_scale
-
-		# for some reason the list of walls is rotated by 180 instead if 90 as expected
-		x,y = MAP_GRID.rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(x,y), math.pi)
-
-		# rotating back to normal causes it to be off-centre, so now add this trial-and-errored amount of origins
-		x += (MAP_GRID.origin_x*11.25)
-		y += (MAP_GRID.origin_y*11.25)
-
-		spaces.append([x,y])
+	walls = MAP_GRID.walls
+	spaces = MAP_GRID.openNodes
 
 	# because a while loop is used, having an iteration limit to prevent freezing if no spaces can be found for food
-	allowed_its = food_to_place * 50
+	allowed_its = food_to_place * 55
 	while (food_to_place > 0 and allowed_its > 0):
 
 		# choose random wall from map
@@ -265,7 +233,7 @@ def place_food():
 		# then find nearby open space
 		for space in spaces:
 			# check distance
-			dist = math.sqrt( (coords[0] - space[0])**2 + (coords[1] - space[1])**2 )
+			dist = math.sqrt( (coords[1] - space[1])**2 + (coords[0] - space[0])**2 )
 
 			# if the current space is close to a wall, but not too close, use this space
 			if (dist < maxDistance and dist > minDistance):
@@ -273,19 +241,19 @@ def place_food():
 				valid = True
 				# check that this space is not too close to another food item
 				for food in FOOD_ITEMS:
-					dist = math.sqrt( (food.x - space[0])**2 + (food.y - space[1])**2 )
+					dist = math.sqrt( (food.x - space[1])**2 + (food.y - space[0])**2 )
 					#print(dist)
-					if (dist < minDistance):
+					if (dist < (maxDistance*2)):
 						valid = False
 						break
 
 				if (valid):
 					# finally, check the surrounding space is clear of walls
-					finalCheck = check_surroundings(int(space[0]), int(space[1]), minDistance)
+					finalCheck = check_surroundings(space[1], space[0], minDistance-1)
 
 					if (finalCheck):
 						# add food item to global list
-						f = route_planner.food_item.FoodItem(space[0],space[1],"food " + str(space[0]) + ", " + str(space[1]))
+						f = route_planner.food_item.FoodItem(space[1], space[0],"food " + str(space[1]) + ", " + str(space[0]))
 						FOOD_ITEMS.append(f)
 
 						# update how many food items are left to place
@@ -293,34 +261,21 @@ def place_food():
 						break
 		allowed_its-=1
 			
-
 def check_surroundings(origin_x, origin_y, area_size):
 	"""
 	Given a pair of coordinates, check the surrounding area in the occupany map.
 	Return True if all surrounding space is empty
 	"""
-
-	# because of the crazy transormations that needed appyling earlier, now need to undo
-	origin_x -= (MAP_GRID.origin_x*11.25)
-	origin_y -= (MAP_GRID.origin_y*11.25)
-
-	origin_x,origin_y = MAP_GRID.rotate((MAP_GRID.origin_x,MAP_GRID.origin_y),(origin_x,origin_y), math.pi)
-
-	x = int(origin_x * MAP_GRID.resolution_reduction_scale)
-	y = int(origin_y * MAP_GRID.resolution_reduction_scale)
-
-	# lower areas sizes don't work so well, so increase here
-	area_size = int(area_size*1.5)
+	x = origin_x
+	y = origin_y
 
 	for x in range (-area_size, area_size):
 		newX = x + origin_x
 		if (newX > 0 and newX < len(MAP_GRID.OC_GRID_TEMP[0])):
 			for y in range (-area_size, area_size):
-
 				newY = y + origin_y
-
-				if (newY > 0 and newY < len(MAP_GRID.OC_GRID_TEMP[1])):
-					value = MAP_GRID.OC_GRID_TEMP[int(newX), int(newY)]
+				if (newY > 0 and newY < len(MAP_GRID.OC_GRID_TEMP)):
+					value = MAP_GRID.OC_GRID_TEMP[newY, newX]
 					if not (value == 0):
 						return False
 	return True
@@ -342,6 +297,8 @@ if __name__ == '__main__':
 	rospy.loginfo("Map received. %d X %d, %f m/px." % (ocuccupancy_map.info.width, ocuccupancy_map.info.height, ocuccupancy_map.info.resolution))
 	MAP_GRID =  route_planner.map_grid.MapGrid()
 	MAP_GRID.set_map(ocuccupancy_map)
+	
+	rospy.loginfo("Placing food...")
 	place_food()
 
 	# add all food items to all robots' shopping lists for now

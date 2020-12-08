@@ -72,11 +72,8 @@ class MapGrid(object):
         gridAsArray = np.delete(gridAsArray,width-1,1)
         gridAsArray = np.delete(gridAsArray,0,0)
         gridAsArray = np.delete(gridAsArray,0,1)
-        #rot90 because output somehow gets flipped
-        #gridAsArray = np.rot90(gridAsArray)
+        #flip vertically as occumpancy map starts data at the bottom
         gridAsArray = np.flip(gridAsArray,0)
-        
-        self.OC_GRID_TEMP = gridAsArray
         
         #Update height and width (now that first+last rows+columns have been removed) 
         self.height = height-2
@@ -145,14 +142,10 @@ class MapGrid(object):
                     for y in range(0, subgridSize):
                         #If a node in the subgrid is of colour X, increment X count
                         if gridArray[i+y][j+x] == -1:
-                  			    nG += 1
+                  			nG += 1
                         elif gridArray[i+y][j+x] == 0:
-                            #If the node is white, we can place a food item here
-                            #So keep a track of the positions of these nodes.
-                            self.openNodes.append((i+y, j+x))
                             nW += 1
                         elif gridArray[i+y][j+x] == 100:
-                            self.walls.append((i+y, j+x))
                             nB += 1
                 
                 #Find the simple majority of a subgrid
@@ -175,6 +168,11 @@ class MapGrid(object):
                     p = Point()
                     p.y = -i/scaleFactor
                     p.x = j/scaleFactor
+
+                    #If the node is white, we can place a food item here
+                    #So keep a track of the positions of these nodes.
+                    self.openNodes.append((-p.y, p.x))
+
                     tempNeighbours = []
                     k=0
                     l=0
@@ -201,6 +199,8 @@ class MapGrid(object):
                             if (self.gridNodes[nd].p.x < (p.x-1) and self.gridNodes[nd].p.y > (p.y+1)): break
                     node = N(p,tempNeighbours,False)
                     self.gridNodes.append(node)
+                elif (lowResRow[-1] == 100): 
+                    self.walls.append((i/scaleFactor, j/scaleFactor))
             
             #Append rows        
             lowerResGridAsListOfLists.append(lowResRow)
@@ -216,6 +216,8 @@ class MapGrid(object):
         lowResGridColorsAsArray = np.asarray(lowerResGridColorsAsListOfLists)
         openNodesAsArray = np.asarray(self.openNodes)
         pathArray = np.asarray(pathList)
+
+        self.OC_GRID_TEMP = lowResGridAsArray
         
         #rospy.loginfo("TESTING PART BEGINNING")
         #print("grid nodes len:", len(self.gridNodes), "path array len:",len(pathArray),"open nodes array len:",len(openNodesAsArray))
@@ -257,14 +259,10 @@ class MapGrid(object):
                     for y in range(0, subgridSize):
                         #If a node in the subgrid is of colour X, increment X count
                         if gridArray[i+y][j+x] == -1:
-                  			    nG += 1
+                  			nG += 1
                         elif gridArray[i+y][j+x] == 0:
-                            #If the node is white, we can place a food item here
-                            #So keep a track of the positions of these nodes.
-                            self.openNodes.append((i+y, j+x))
                             nW += 1
                         elif gridArray[i+y][j+x] == 100:
-                            self.walls.append((i+y, j+x))
                             nB += 1
                 
                 #Find the simple majority of a subgrid
@@ -290,6 +288,11 @@ class MapGrid(object):
                     p = Point()
                     p.y = -i/scaleFactor
                     p.x = j/scaleFactor
+
+                    #If the node is white, we can place a food item here
+                    #So keep a track of the positions of these nodes.
+                    self.openNodes.append((-p.y, p.x))
+
                     tempNeighbours = []
                     k=0
                     l=0
@@ -316,6 +319,7 @@ class MapGrid(object):
                             if (self.gridNodes[nd].p.x < (p.x-1) and self.gridNodes[nd].p.y > (p.y+1)): break
                     node = N(p,tempNeighbours,False)
                     self.gridNodes.append(node)
+                elif (lowResRow[-1] == 100): self.walls.append((i/scaleFactor, j/scaleFactor))
 
             #Append rows        
             lowerResGridAsListOfLists.append(lowResRow)
@@ -326,6 +330,8 @@ class MapGrid(object):
         lowResGridColorsAsArray = np.asarray(lowerResGridColorsAsListOfLists)
         openNodesAsArray = np.asarray(self.openNodes)
         
+        self.OC_GRID_TEMP = lowResGridAsArray
+
         returnArray = np.array([lowResGridAsArray, lowResGridColorsAsArray, openNodesAsArray])
         
         rospy.loginfo("Resolution reduced.")
@@ -366,7 +372,6 @@ class MapGrid(object):
 
         #Convert row-major occupancy map data (one list) to a list of lists (abstract array structure)
         gridAsListOfLists = self.get_map_as_lists(list(occupancy_map.data), self.height, self.width)
-        self.list = gridAsListOfLists
         
         #Reduced dimensions, more prime factors, different options of resolution reduction
         gridAsArray = self.trim_map(gridAsListOfLists, self.height, self.width)
@@ -377,10 +382,14 @@ class MapGrid(object):
         #infoArray = self.reduce_resolution(gridAsArray,self.resolution_reduction_scale,self.resolution_reduction_scale)
         #self.output_rgb_image_from_array(infoArray[0], 'a')
         
-        gridAsArray = self.expand_walls(gridAsArray,5)
+        gridAsArray = self.expand_walls(gridAsArray,4)
         infoArray = self.reduce_resolution_weighted(gridAsArray, self.resolution_reduction_scale, self.resolution_reduction_scale, 1)
-        self.output_rgb_image_from_array(infoArray[0], 'a')
-
+        #for node in self.gridNodes:
+        #    print(node.p)
+        #print(len(self.gridNodes))
+        
+        #self.output_rgb_image_from_array(infoArray[0], 'a')
+        #exit()
         #self.output_greyscale_image_from_array(infoArray[1], 'notres_reduced_weighted3_greyscale.png')
         
         #self.output_greyscale_image_from_array(self.expand_walls(gridAsArray,0),'expanded_walls_e0.png')
@@ -396,25 +405,29 @@ class MapGrid(object):
     	return qx, qy
 
     def real_to_matrix(self, x, y):
-    	"""
-		Rotate by -90 degrees, then undo the resolution scaling fators
-		"""
+    	#"""
+		#Rotate by -90 degrees, then undo the resolution scaling fators
+		#"""
 
-    	newx, newy = self.rotate((self.origin_x,self.origin_y),(x,y), math.pi/2)
+    	#newx, newy = self.rotate((self.origin_x,self.origin_y),(x,y), math.pi/2)
 
-    	newx = (newx / self.resolution) / self.resolution_reduction_scale
-    	newy = (newy / self.resolution) / self.resolution_reduction_scale
+    	x = (x / self.resolution) / self.resolution_reduction_scale
+    	
+        y = ((2*self.origin_y - y) / self.resolution) / self.resolution_reduction_scale
 
-    	return (int(newx), int(newy))
+    	return (int(x), int(y))
 
     def matrix_to_real(self, x, y):
-    	"""
-		Rotate by +90 degrees, then apply the resolution scaling fators
-		"""
-    	x *= self.resolution * self.resolution_reduction_scale
-    	y *= self.resolution * self.resolution_reduction_scale
+    	#"""
+		#Rotate by +90 degrees, then apply the resolution scaling fators
+		#"""
+    	#x *= self.resolution * self.resolution_reduction_scale
+    	#y *= self.resolution * self.resolution_reduction_scale
 
-    	x, y = self.rotate((self.origin_x,self.origin_y),(x,y), -math.pi/2)
+        x = x * self.resolution * self.resolution_reduction_scale
+        
+        y = (199 - y) * self.resolution * self.resolution_reduction_scale
+    	#x, y = self.rotate((self.origin_x,self.origin_y),(x,y), -math.pi/2)
 
     	return (x, y)
         

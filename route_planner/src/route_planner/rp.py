@@ -35,8 +35,6 @@ class RoutePlanner(object):
 
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 
-
-
 	def receive_map_update(self, map_grid):
 		# do something
 		x = 0
@@ -48,11 +46,11 @@ class RoutePlanner(object):
 		checks if it is close enough. then updates target.
 		"""
 		self.current_pose = odometry.pose
-
+		
 		# the default origin for the robot is 0,0 so need to add offset
 		self.current_pose.pose.position.x += self.map_grid.origin_x
 		self.current_pose.pose.position.y += self.map_grid.origin_y
-
+						
 		if len(self.path_to_next_item) == 0: 
 				print("Finished path, either we are done or need to get path to next item")
 				self.path_to_next_item = self.new_path()
@@ -60,7 +58,7 @@ class RoutePlanner(object):
 			# next position on the current path, matrix position
 			current_target = self.path_to_next_item[0]
 
-			real_x, real_y = self.map_grid.matrix_to_real(current_target[0], current_target[1])
+			real_x, real_y = self.map_grid.matrix_to_real(current_target[1], current_target[0])
 
 			# convert to real-world pos so movement.py can deal with it
 			#adjusted_target = [current_target[0], current_target[1]]
@@ -86,7 +84,7 @@ class RoutePlanner(object):
 		self.has_requested_new_path = True
 		# convert current position to matrix
 		startx, starty = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
-
+		
 		s = Point(startx, -starty, 0)
 
 		# choose random food item from shopping list as target
@@ -94,7 +92,7 @@ class RoutePlanner(object):
 		f = self.shopping_list[randindex]
 
 		# NOTE: converting to integer is needed otherwise path will not be found
-		e = Point(int(f.x),int(-f.y),0)
+		e = Point(f.x,-f.y,0)
 
 		path = self.A_star(s,e)
 
@@ -142,8 +140,8 @@ class RoutePlanner(object):
 			if (Nodes[n].p == target_position): 
 				endNodeIndex = n
 		
-		print("start:", startNodeIndex)
-		print("end:", endNodeIndex)
+		#print('start:', Nodes[startNodeIndex].p.x, ' ', Nodes[startNodeIndex].p.y )
+		#print('end:', Nodes[endNodeIndex].p.x, ' ', Nodes[endNodeIndex].p.y)
 
 		Nodes[startNodeIndex].lDist = 0.0
 		Nodes[startNodeIndex].gDist = self.heuristic(start_position, target_position)
@@ -176,7 +174,7 @@ class RoutePlanner(object):
 				
 				#Add neighbour to list if it hasn't been visited and isn't an obstacle
 				k = Nodes[cNI].neighbours[n]
-				if ((Nodes[k].visited == False) and (Nodes[k].isObstacle == False)):
+				if ((Nodes[k].visited == False) and (Nodes[k].isObstacle == False) and (len(Nodes[k].neighbours) == 8)):
 					if k not in notTestedNI: notTestedNI.append(k)
 
 				possiblyLowerDist = Nodes[cNI].lDist + self.distance(Nodes[cNI].p, Nodes[k].p)
@@ -200,27 +198,22 @@ class RoutePlanner(object):
 			path.reverse()
 
 		return path
-
-	def set_map(self, occupancy_map):
-		"""Set the map"""
-		self.map_grid.set_map(occupancy_map)
 		
 #------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
 	def _laser_callback(self, scan):
 		x = 0
 
-
 	def find_coordinate(self, product):			# Might need more arguments
 		""" 
-	Find the coordinate of the given product
-	using the map
-	Return: coordinates of the product
-	"""
+		Find the coordinate of the given product
+		using the map
+		Return: coordinates of the product
+		"""
 		raise NotImplementedError()
 
 	def sort(self, products_array):
 		"""
-	This function sorts the array of products in some order
-	Returns: sorted products_array
-	"""
+		This function sorts the array of products in some order
+		Returns: sorted products_array
+		"""
 		raise NotImplementedError()
