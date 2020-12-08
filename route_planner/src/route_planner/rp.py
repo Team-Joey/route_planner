@@ -13,7 +13,7 @@ import copy
 
 class RoutePlanner(object):
 
-	def __init__(self, _cmd_vel, shopping_list, map_grid):
+	def __init__(self, _cmd_vel, shopping_list, map_grid, name):
 		rospy.loginfo("A route planner object was created.")
 
 		self.path_to_next_item = []
@@ -33,13 +33,20 @@ class RoutePlanner(object):
 
 		# create a movement object set_mapwhich will handle all translation and rotation of the robot
 		self.movement = route_planner.movement.Movement(_cmd_vel)
+
+		self.wait_for_obstacle_to_move = False
+
+		# text to display above robot in rviz, useful for letting us know what the robot is doing
+		self.status = ""
+
+		self.name = name
+
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 
+	def receive_map_update(self, robots):
+		self.wait_for_obstacle_to_move =  self.check_path_for_robot_obstacles(robots)
 
 
-	def receive_map_update(self, map_grid):
-		# do something
-		x = 0
 
 	def _odometry_callback(self, odometry):
 		"""
@@ -57,6 +64,12 @@ class RoutePlanner(object):
 
 		self.current_pose.pose.position.x += self.map_grid.origin_x
 		self.current_pose.pose.position.y += self.map_grid.origin_y
+
+		# if another robot is in the way, wait for them to move
+		# issue order to stop movement
+		if (self.wait_for_obstacle_to_move):
+			self.movement.stop()
+			return
 
 		if len(self.path_to_next_item) == 0: 
 				print("Finished path, either we are done or need to get path to next item")
@@ -109,6 +122,38 @@ class RoutePlanner(object):
 			count += 1
 
 		return trimmed_path
+
+	def check_path_for_robot_obstacles(self, robots):
+		"""
+		Return true if a robot is in the way
+		"""
+
+		self.robot_detection_range = 1
+
+		# first check if there's a robot in immediate way
+		self.status = self.name
+
+		if (len(self.path_to_next_item) == 0):
+			self.status = "No path"
+			return False
+
+		# get next position in list and convert to real
+		self_x, self_y = self.map_grid.matrix_to_real(self.path_to_next_item[0][0], self.path_to_next_item[0][1])
+
+		for r in robots:
+			# don't apply this for this robot object
+			if not(r == self):
+
+				robot_x = r.current_pose.pose.position.x#, robot_y = self.map_grid.real_to_matrix(r.current_pose.pose.position.x, r.current_pose.pose.position.y)
+				robot_y = r.current_pose.pose.position.y
+
+				dist = math.sqrt( (robot_x - self_x)**2 + (robot_y - self_y)**2 )
+				if (dist < self.robot_detection_range):
+					self.status = "Waiting"
+					return True				
+	
+		return False
+
 # ----------------------------------------------------------------------------
 
 	def distance(self, p1, p2):

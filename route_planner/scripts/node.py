@@ -49,19 +49,20 @@ class RoutePlannerNode(object):
 		self._tf_publisher = rospy.Publisher("/tf", tfMessage, queue_size=1)			# Publishes tf message for debugging
 		self._cmd_vel = rospy.Publisher(cmd_vel, Twist, queue_size=100)				# Publishes tf message for debugging
 		
-		self._route_planner = route_planner.rp.RoutePlanner(self._cmd_vel, placeholder_shopping_list, MAP_GRID)
+		self._route_planner = route_planner.rp.RoutePlanner(self._cmd_vel, placeholder_shopping_list, MAP_GRID, robotname)
 
 		# subscribe to the odom and laser topics for this robot
 		rospy.Subscriber(base_scan_topic, LaserScan, self._route_planner._laser_callback)
 		rospy.Subscriber(odom_topic, Odometry, self._route_planner._odometry_callback)
 
-def get_robot_positions_matrix():
-	positions = []
+def extract_robots():
+	"""
+	Collect all the matrix positions of each robot
+	"""
+	robots = []
 	for robot in ROBOTS:
-		x = robot._route_planner.current_pose.pose.position.x
-		y = robot._route_planner.current_pose.pose.position.y
-		positions.append([x,y])
-	return positions
+		robots.append(robot._route_planner)
+	return robots
 
 
 # called every x times a second
@@ -72,15 +73,14 @@ def update():
 	# MAP_GRID probably needs to be updated here
 	# MAP_GRID = update_map_grid()
 
-	# collect up all robot matrix positions
-	robot_positions = get_robot_positions_matrix()
+	# extract RoutePlanner objects from RoutePlannerNodes (ROBOTS)
+	robots = extract_robots()
 
 	id = 0
 
 	for robot in ROBOTS:
 		# potentially should only call this function if the map has actually changed
-		robot._route_planner.receive_map_update(robot_positions)#MAP_GRID)
-
+		robot._route_planner.receive_map_update(robots)
 		# create a marker for the robot and append to marker array
 		markers += (create_robot_marker(robot, id))
 
@@ -169,7 +169,7 @@ def create_robot_marker(robot, id):
 	robotMarkerText.id = id + 1
 	robotMarkerText.type = Marker.TEXT_VIEW_FACING#2 # sphere
 	robotMarkerText.action = 0
-	robotMarkerText.text=robot.name
+	robotMarkerText.text=str(robot._route_planner.status)
 
 	robotMarkerText.pose.position.x = robot._route_planner.current_pose.pose.position.x
 	robotMarkerText.pose.position.y = robot._route_planner.current_pose.pose.position.y

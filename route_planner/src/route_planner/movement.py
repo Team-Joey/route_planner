@@ -36,6 +36,19 @@ class Movement(object):
 
 
 #----------------------------------------------------------------------------------------------------------------------------------
+	def stop(self):
+		"""
+		Stops robot moving and rotating
+		"""
+
+		base_data = Twist()
+
+		base_data.linear.x = 0
+		base_data.angular.z = 0
+
+		self._cmd_vel.publish( base_data )
+
+#----------------------------------------------------------------------------------------------------------------------------------
 	def move_to_target(self, x, y):
 		"""
 		Moves robot forward until the given position has been reached
