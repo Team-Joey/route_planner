@@ -53,6 +53,8 @@ class RoutePlanner(object):
 		self.current_pose.pose.position.x += self.map_grid.origin_x
 		self.current_pose.pose.position.y += self.map_grid.origin_y
 
+		print(self.current_pose.pose.position)
+
 		if len(self.path_to_next_item) == 0: 
 				print("Finished path, either we are done or need to get path to next item")
 				self.path_to_next_item = self.new_path()

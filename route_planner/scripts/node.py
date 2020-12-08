@@ -135,6 +135,7 @@ def create_robot_marker(robot, id):
 	robotMarker.action = 0
 
 	# need to add offset to marker position
+	print("USING: " + str(robot._route_planner.current_pose.pose.position))
 	robotMarker.pose.position.x = robot._route_planner.current_pose.pose.position.x
 	robotMarker.pose.position.y = robot._route_planner.current_pose.pose.position.y
 	robotMarker.pose.orientation = robot._route_planner.current_pose.pose.orientation

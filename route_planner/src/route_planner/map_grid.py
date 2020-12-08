@@ -411,7 +411,7 @@ class MapGrid(object):
         gridAsArray = self.expand_walls(gridAsArray,10)
         infoArray = self.reduce_resolution_weighted(gridAsArray, self.resolution_reduction_scale, self.resolution_reduction_scale, 3)
         self.gridArray = infoArray[0]
-        #self.output_rgb_image_from_array(infoArray[0], 'a')
+        self.output_rgb_image_from_array(infoArray[0], 'a')
         
 
         #self.output_greyscale_image_from_array(infoArray[1], 'notres_reduced_weighted3_greyscale.png')
