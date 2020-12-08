@@ -48,6 +48,14 @@ class RoutePlannerNode(object):
 		rospy.Subscriber(base_scan_topic, LaserScan, self._route_planner._laser_callback)
 		rospy.Subscriber(odom_topic, Odometry, self._route_planner._odometry_callback)
 
+def get_robot_positions_matrix():
+	positions = []
+	for robot in ROBOTS:
+		x = robot._route_planner.current_pose.pose.position.x
+		y = robot._route_planner.current_pose.pose.position.y
+		positions.append([x,y])
+	return positions
+
 # called every x times a second
 def update():
 	# array of markers to diplay in rviz, includes robots and food items
@@ -56,11 +64,14 @@ def update():
 	# MAP_GRID probably needs to be updated here
 	# MAP_GRID = update_map_grid()
 
+	# collect up all robot matrix positions
+	robot_positions = get_robot_positions_matrix()
+
 	id = 0
 
 	for robot in ROBOTS:
 		# potentially should only call this function if the map has actually changed
-		robot._route_planner.receive_map_update(MAP_GRID)
+		robot._route_planner.receive_map_update(robot_positions)#MAP_GRID)
 
 		# create a marker for the robot and append to marker array
 		markers += (create_robot_marker(robot, id))
@@ -74,16 +85,7 @@ def update():
 			x = pos[0]
 			y = pos[1]
 
-			#if (count == 0):
-			#	food_item = route_planner.food_item.FoodItem(x, y, "START")
-
-			#elif (count == len(robot._route_planner.path_to_next_item)-1):
-			#	food_item = route_planner.food_item.FoodItem(x, y, "END")
-
-			#else:
-			#food_item = route_planner.food_item.FoodItem(x, y, "")
-
-			markers.append(create_path_marker(x,y,id))#(create_food_marker(food_item, id))
+			#markers.append(create_path_marker(x,y,id))#(create_food_marker(food_item, id))
 			id += 1
 			count+=1
 
@@ -161,8 +163,8 @@ def create_robot_marker(robot, id):
 	robotMarkerText.action = 0
 	robotMarkerText.text=robot.name
 
-	robotMarkerText.pose.position.x = robot._route_planner.current_pose.pose.position.x #+ MAP_GRID.origin_x
-	robotMarkerText.pose.position.y = robot._route_planner.current_pose.pose.position.y #+ MAP_GRID.origin_y
+	robotMarkerText.pose.position.x = robot._route_planner.current_pose.pose.position.x
+	robotMarkerText.pose.position.y = robot._route_planner.current_pose.pose.position.y
 	# give z of 2 so the text is above other markers
 	robotMarkerText.pose.position.z = 2
 

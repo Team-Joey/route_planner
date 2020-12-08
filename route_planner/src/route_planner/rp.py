@@ -9,6 +9,7 @@ from 	math 			import cos, sin
 import 	route_planner.movement
 import 	math
 import 	random
+import copy
 
 class RoutePlanner(object):
 
@@ -22,7 +23,7 @@ class RoutePlanner(object):
 		
 		self.current_pose.header.frame_id = "/map"
 
-		self.map_grid = map_grid
+		self.map_grid = copy.deepcopy(map_grid)
 
 		self.path_to_next_item = []
 
