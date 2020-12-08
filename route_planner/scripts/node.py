@@ -16,11 +16,18 @@ import 	route_planner.map_grid
 import 	route_planner.food_item
 import 	random
 import math
+import copy
 
 ROBOTS = []
 FOOD_ITEMS = []
 MARKER_PUB = None
 MAP_GRID = None
+MARKERS = []
+
+# how long do markers stay in rviz before getting removed
+# lower durations tend to lead to flashing markers
+# and duration of zero leads to markers not deleting properly
+MARKER_DURATION = 0.5
 
 class RoutePlannerNode(object):
 	def __init__(self, robotname, placeholder_shopping_list):
@@ -56,6 +63,7 @@ def get_robot_positions_matrix():
 		positions.append([x,y])
 	return positions
 
+
 # called every x times a second
 def update():
 	# array of markers to diplay in rviz, includes robots and food items
@@ -85,7 +93,7 @@ def update():
 			x = pos[0]
 			y = pos[1]
 
-			#markers.append(create_path_marker(x,y,id))#(create_food_marker(food_item, id))
+			markers.append(create_path_marker(x,y,id))#(create_food_marker(food_item, id))
 			id += 1
 			count+=1
 
@@ -113,7 +121,7 @@ def create_path_marker(x,y,id):
 	marker.pose.position.x = real_x
 	marker.pose.position.y = real_y
 
-	marker.lifetime = rospy.Duration(0)
+	marker.lifetime = rospy.Duration(MARKER_DURATION)
 	
 	marker.scale.x = 0.25
 	marker.scale.y = 0.25
@@ -141,7 +149,7 @@ def create_robot_marker(robot, id):
 	robotMarker.pose.position.y = robot._route_planner.current_pose.pose.position.y
 	robotMarker.pose.orientation = robot._route_planner.current_pose.pose.orientation
 
-	robotMarker.lifetime = rospy.Duration(0)
+	robotMarker.lifetime = rospy.Duration(MARKER_DURATION)
 	
 	robotMarker.scale.x = 0.5
 	robotMarker.scale.y = 0.5
@@ -168,7 +176,7 @@ def create_robot_marker(robot, id):
 	# give z of 2 so the text is above other markers
 	robotMarkerText.pose.position.z = 2
 
-	robotMarkerText.lifetime = rospy.Duration(0)
+	robotMarkerText.lifetime = rospy.Duration(MARKER_DURATION)
 	
 	robotMarkerText.scale.x = 0.5
 	robotMarkerText.scale.y = 0.5
@@ -196,7 +204,7 @@ def create_food_marker(food_item, id):
 	foodMarker.pose.position.x = real_x
 	foodMarker.pose.position.y = real_y
 
-	foodMarker.lifetime = rospy.Duration(0)
+	foodMarker.lifetime = rospy.Duration(MARKER_DURATION)
 	
 	foodMarker.scale.x = 0.5
 	foodMarker.scale.y = 0.5
@@ -223,7 +231,7 @@ def create_food_marker(food_item, id):
 	# give z of 2 so the text is above other markers
 	foodMarkerText.pose.position.z = 2
 
-	foodMarkerText.lifetime = rospy.Duration(0)
+	foodMarkerText.lifetime = rospy.Duration(MARKER_DURATION)
 	
 	foodMarkerText.scale.x = 0.5
 	foodMarkerText.scale.y = 0.5
