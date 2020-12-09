@@ -41,10 +41,15 @@ class RoutePlanner(object):
 
 		self.name = name
 
+		# a list of robots that are blocking this robot's path
+		self.blocked_by = None
+
+		self.is_waiting = False
+
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 
 	def receive_map_update(self, robots):
-		self.wait_for_obstacle_to_move =  self.check_path_for_robot_obstacles(robots)
+		self.check_path_for_robot_obstacles(robots)
 
 
 
@@ -65,16 +70,21 @@ class RoutePlanner(object):
 		self.current_pose.pose.position.x += self.map_grid.origin_x
 		self.current_pose.pose.position.y += self.map_grid.origin_y
 
+		# don't allow any action if waiting
+		if self.is_waiting:
+			return
+
 		# if another robot is in the way, wait for them to move
 		# issue order to stop movement
-		if (self.wait_for_obstacle_to_move):
-			self.movement.stop()
+		if not self.blocked_by == None:
+			self.wait_or_replan()
 			return
 
 		if len(self.path_to_next_item) == 0: 
 				print("Finished path, either we are done or need to get path to next item")
 				self.path_to_next_item = self.new_path()
 		else:
+			self.status = "Following path"
 			# next position on the current path, matrix position
 			current_target = self.path_to_next_item[0]
 
@@ -106,7 +116,7 @@ class RoutePlanner(object):
 		# NOTE: converting to integer is needed otherwise path will not be found
 		e = Point(int(f.x),int(-f.y),0)
 
-		path = self.A_star(s,e)
+		path = self.A_star(s,e, [])
 
 		# cut out some waypoints, slows robot down a lot otherwise
 		trimmed_path = []
@@ -125,35 +135,88 @@ class RoutePlanner(object):
 
 	def check_path_for_robot_obstacles(self, robots):
 		"""
-		Return true if a robot is in the way
+		Sets the blocked_by list (fills it with any robots that are blocking this robot)
 		"""
+
+		self.blocked_by = None
 
 		self.robot_detection_range = 1
 
-		# first check if there's a robot in immediate way
-		self.status = self.name
-
 		if (len(self.path_to_next_item) == 0):
 			self.status = "No path"
-			return False
+			return
 
 		# get next position in list and convert to real
-		self_x, self_y = self.map_grid.matrix_to_real(self.path_to_next_item[0][0], self.path_to_next_item[0][1])
+
 
 		for r in robots:
 			# don't apply this for this robot object
 			if not(r == self):
 
-				robot_x = r.current_pose.pose.position.x#, robot_y = self.map_grid.real_to_matrix(r.current_pose.pose.position.x, r.current_pose.pose.position.y)
-				robot_y = r.current_pose.pose.position.y
+				for i in range(0, 2):
+					if (i < len(self.path_to_next_item)):
+						self_x, self_y = self.map_grid.matrix_to_real(self.path_to_next_item[i][0], self.path_to_next_item[i][1])
 
-				dist = math.sqrt( (robot_x - self_x)**2 + (robot_y - self_y)**2 )
-				if (dist < self.robot_detection_range):
-					self.status = "Waiting"
-					return True				
-	
-		return False
+						robot_x = r.current_pose.pose.position.x
+						robot_y = r.current_pose.pose.position.y
 
+						dist = math.sqrt( (robot_x - self_x)**2 + (robot_y - self_y)**2 )
+
+						# if the other robot is too close, add to list of blocking robots
+						if (dist < self.robot_detection_range):
+							self.blocked_by = r
+							return
+
+		# if no robots are blocking this robot, make sure to uncheck waiting
+		self.is_waiting = False
+
+	def wait_or_replan(self):
+		# first kill any movement
+		self.movement.stop()
+
+		# if the robot that is blocking this robot is not in turn being blocked by this robot, just wait for it to pass by
+		if (self.blocked_by.blocked_by == None):
+			# set this to true so that this robot will not attempy to re-route, instead commits to waiting
+			self.is_waiting = True
+			self.status = "Waiting"
+
+		# else mexican stand-off, so one and only one robot should replan their route to avoid the other
+		else:
+			self.status = "Re-routing"
+			# collect up all matrix positions to avoid
+			avoid = []
+			avoid.append(self.map_grid.real_to_matrix(self.blocked_by.current_pose.pose.position.x, self.blocked_by.current_pose.pose.position.x))
+			for i in range (0, 2):
+				if i < len(self.blocked_by.path_to_next_item):
+					pos = self.blocked_by.path_to_next_item[i]
+
+					# add all nodes in a 10x10 area so a large area is avoided
+					capturearea = 20
+					for x in range (-capturearea,capturearea):
+						for y in range (-capturearea,capturearea):
+							newx = pos[0] + x
+							newy = pos[1] + y
+							if (newx >= 0 and newx < self.map_grid.width):
+								if (newy >= 0 and newy < self.map_grid.height):
+									avoid.append([newx, newy])
+
+			# now call pathfinding with this list of nodes to avoid
+			startx, starty = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
+			s = Point(startx, -starty, 0)
+
+			f = self.path_to_next_item[len(self.path_to_next_item)-1]
+			e = Point(f[0], f[1],0)
+
+			self.path_to_next_item = self.A_star(s,e, avoid)
+
+			if (len(self.path_to_next_item) == 0):
+				self.status = "Can't reach target"
+			else:
+				self.status = "Succesful re-route"
+
+			# set to None so that the robot that is blocking this one knows to just wait instead of replan route
+			self.blocked_by = None
+									
 # ----------------------------------------------------------------------------
 
 	def distance(self, p1, p2):
@@ -162,11 +225,13 @@ class RoutePlanner(object):
 	def heuristic(self, p1, p2):
 		return self.distance(p1, p2)
 
-	def A_star(self, start_position, target_position):
+	def A_star(self, start_position, target_position, avoid):
 		"""
 		Find shortest path from a given start "position" to 
 		a given target "position" (using A* algorithm)
 		Return: Array of pixel "coordinates" the robot would visit
+
+		EXTRA: the parameter 'avoid' is an array of matrix positions that a* should avoid
 		"""
 		Nodes = self.map_grid.gridNodes
 		startNodeIndex = None
@@ -219,7 +284,16 @@ class RoutePlanner(object):
 				#Add neighbour to list if it hasn't been visited and isn't an obstacle
 				k = Nodes[cNI].neighbours[n]
 				if ((Nodes[k].visited == False) and (Nodes[k].isObstacle == False)):
-					if k not in notTestedNI: notTestedNI.append(k)
+					# check each position in the avoid array, if any match the current node, treat
+					# this node as an obstacle
+					ignore = False
+					for pos in avoid:
+						if (Nodes[k].p.x == pos[0] and Nodes[k].p.y == pos[1]):
+							ignore = True
+							break
+
+					if not ignore:
+						if k not in notTestedNI: notTestedNI.append(k)
 
 				possiblyLowerDist = Nodes[cNI].lDist + self.distance(Nodes[cNI].p, Nodes[k].p)
 

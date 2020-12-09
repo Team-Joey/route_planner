@@ -245,6 +245,22 @@ def create_food_marker(food_item, id):
 	return [foodMarker, foodMarkerText]
 
 def place_food():
+
+	#DELETE THUS
+	#x, y = MAP_GRID.real_to_matrix(-1+16.55, -1+16.55)
+	#f = route_planner.food_item.FoodItem(x, y, "")
+	#FOOD_ITEMS.append(f)
+
+	#x, y = MAP_GRID.real_to_matrix(-1+16.55, -6+16.55)
+	#f = route_planner.food_item.FoodItem(x, y, "")
+	#FOOD_ITEMS.append(f)
+
+	#x, y = MAP_GRID.real_to_matrix(-1+16.55, 5+16.55)
+	#f = route_planner.food_item.FoodItem(x, y,"")
+	#FOOD_ITEMS.append(f)
+	#return
+	#----
+
 	"""
 	Place food around the map. Placed near walls (to replicate being on a shelf)
 	minDistance is min distance food can be from a wall or other food item
