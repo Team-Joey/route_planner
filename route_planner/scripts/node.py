@@ -97,18 +97,16 @@ def update():
 			id += 1
 			count+=1
 
-
-
 		# testing blocked nodes-------------------
 
-		for pos in robot._route_planner.blocked_nodes:
+		#for pos in robot._route_planner.blocked_nodes:
 
-			x = pos[0]
-			y = pos[1]
+		#	x = pos[0]
+		#	y = pos[1]
 
-			markers.append(create_path_marker(x,y,id))
-			id += 1
-			count+=1
+		#	markers.append(create_path_marker(x,y,id))
+		#	id += 1
+		#	count+=1
 
 		#-----------------------------------------
 
@@ -260,12 +258,6 @@ def create_food_marker(food_item, id):
 	return [foodMarker, foodMarkerText]
 
 def place_food():
-
-	f = route_planner.food_item.FoodItem(100, 70,"food " )
-	FOOD_ITEMS.append(f)
-
-	return 
-
 	"""
 	Place food around the map. Placed near walls (to replicate being on a shelf)
 	minDistance is min distance food can be from a wall or other food item

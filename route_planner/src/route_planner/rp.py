@@ -72,9 +72,9 @@ class RoutePlanner(object):
 		self.current_pose.pose.position.x += self.map_grid.origin_x
 		self.current_pose.pose.position.y += self.map_grid.origin_y
 
-		if self.name == "robot_1":
+		#if self.name == "robot_1":
 			#print((self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)))
-			return
+		#	return
 
 		# don't allow any action if waiting
 		if self.is_waiting:
@@ -108,8 +108,11 @@ class RoutePlanner(object):
 					current_target = self.path_to_next_item[0]
 
 	def new_path(self):
+
+		self.blocked_nodes = []
+
 		print("Getting path to random food item")
-		self.has_requested_new_path = True
+
 		# convert current position to matrix
 		startx, starty = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
 
@@ -182,7 +185,7 @@ class RoutePlanner(object):
 		self.movement.stop()
 
 		# if the robot that is blocking this robot is not in turn being blocked by this robot, just wait for it to pass by
-		if False:#(self.blocked_by.blocked_by == None):
+		if (self.blocked_by.blocked_by == None):
 			# set this to true so that this robot will not attempy to re-route, instead commits to waiting
 			self.is_waiting = True
 			self.status = "Waiting"
@@ -194,10 +197,10 @@ class RoutePlanner(object):
 			avoid = []
 			thisx, thisy = (self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y))
 
-			#pos = (self.map_grid.real_to_matrix(self.blocked_by.current_pose.pose.position.x, self.blocked_by.current_pose.pose.position.y))
+			other_x, other_y = (self.map_grid.real_to_matrix(self.blocked_by.current_pose.pose.position.x, self.blocked_by.current_pose.pose.position.y))
 			
 			avoid = []
-			pos = [101,82]
+			pos = [other_x, other_y]
 			# add all nodes in a large area around the blocking robot
 			capturearea = 10
 			for x in range (-capturearea,capturearea):
@@ -211,16 +214,16 @@ class RoutePlanner(object):
 
 
 			thisx, thisy = (self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y))
-			this_pos = [thisy, thisx]
-			capturearea = 5
+			this_pos = [thisx, thisy]
+			capturearea = 10
 			for x in range (-capturearea,capturearea):
 				for y in range (-capturearea,capturearea):
 					newx = this_pos[0] + x
 					newy = this_pos[1] + y
 					if (newx >= 0 and newx < self.map_grid.width):
 						if (newy >= 0 and newy < self.map_grid.height):
-							if [newx, newy] in avoid:
-								avoid.remove([newx, newy])
+							if [newy, newx] in avoid:
+								avoid.remove([newy, newx])
 
 			self.blocked_nodes = avoid
 
@@ -236,7 +239,8 @@ class RoutePlanner(object):
 			self.path_to_next_item = self.trim_path(self.A_star(s,e, avoid))
 
 			if (len(self.path_to_next_item) == 0):
-				self.status = "Can't reach target"
+				# can't reach target, so just get nee random one
+				self.path_to_next_item = self.new_path()
 			else:
 				self.status = "Succesful re-route"
 
