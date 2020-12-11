@@ -97,6 +97,21 @@ def update():
 			id += 1
 			count+=1
 
+
+
+		# testing blocked nodes-------------------
+
+		for pos in robot._route_planner.blocked_nodes:
+
+			x = pos[0]
+			y = pos[1]
+
+			markers.append(create_path_marker(x,y,id))
+			id += 1
+			count+=1
+
+		#-----------------------------------------
+
 		id+=1
 
 	for food_item in FOOD_ITEMS:
@@ -246,20 +261,10 @@ def create_food_marker(food_item, id):
 
 def place_food():
 
-	#DELETE THUS
-	#x, y = MAP_GRID.real_to_matrix(-1+16.55, -1+16.55)
-	#f = route_planner.food_item.FoodItem(x, y, "")
-	#FOOD_ITEMS.append(f)
+	f = route_planner.food_item.FoodItem(100, 70,"food " )
+	FOOD_ITEMS.append(f)
 
-	#x, y = MAP_GRID.real_to_matrix(-1+16.55, -6+16.55)
-	#f = route_planner.food_item.FoodItem(x, y, "")
-	#FOOD_ITEMS.append(f)
-
-	#x, y = MAP_GRID.real_to_matrix(-1+16.55, 5+16.55)
-	#f = route_planner.food_item.FoodItem(x, y,"")
-	#FOOD_ITEMS.append(f)
-	#return
-	#----
+	return 
 
 	"""
 	Place food around the map. Placed near walls (to replicate being on a shelf)
