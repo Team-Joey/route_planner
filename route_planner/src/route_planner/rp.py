@@ -191,7 +191,7 @@ class RoutePlanner(object):
 					pos = self.blocked_by.path_to_next_item[i]
 
 					# add all nodes in a 10x10 area so a large area is avoided
-					capturearea = 20
+					capturearea = 5
 					for x in range (-capturearea,capturearea):
 						for y in range (-capturearea,capturearea):
 							newx = pos[0] + x
@@ -199,6 +199,18 @@ class RoutePlanner(object):
 							if (newx >= 0 and newx < self.map_grid.width):
 								if (newy >= 0 and newy < self.map_grid.height):
 									avoid.append([newx, newy])
+
+			# make sure the area around the robot is allowed		
+			capturearea = 5
+			thisx, thisy = (self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.x))
+			for x in range (-capturearea,capturearea):
+				for y in range (-capturearea,capturearea):
+					newx = thisx + x
+					newy = thisy + y
+					if (newx >= 0 and newx < self.map_grid.width):
+						if (newy >= 0 and newy < self.map_grid.height):
+							if [newx, newy] in avoid:
+								avoid.remove([newx, newy])
 
 			# now call pathfinding with this list of nodes to avoid
 			startx, starty = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
