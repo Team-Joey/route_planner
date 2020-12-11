@@ -233,6 +233,11 @@ class RoutePlanner(object):
 
 			f = self.path_to_next_item[len(self.path_to_next_item)-1]
 
+			# if the target position is within the avoid array
+			if f in avoid:
+				self.path_to_next_item = self.new_path()
+				return
+
 			e = Point(f[1], -f[0],0)
 
 
@@ -267,6 +272,10 @@ class RoutePlanner(object):
 		startNodeIndex = None
 		endNodeIndex = None
 
+		lowestDist = 9999999999
+
+		startx, starty = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
+
 		#Reset all nodes' parent, visited and distance values
 		for n in range(0, len(Nodes)):
 			Nodes[n].visited = False
@@ -274,8 +283,17 @@ class RoutePlanner(object):
 			Nodes[n].gDist = 999999999999999999
 			Nodes[n].parent = None
 			#Set starting and ending nodes
-			if (Nodes[n].p == start_position): 
+
+			# robots can sometimes get out of sync with matrix, which means they are slightly off the map/ inside a wall
+			# by choosing the nearest start node instead of the exact one, can solve this issue
+			dist = math.sqrt( (Nodes[n].p.x - startx)**2 + (Nodes[n].p.y - -starty)**2 )
+			if (dist < lowestDist):
+				lowestDist = dist
 				startNodeIndex = n
+
+			#if (Nodes[n].p == start_position): 
+			#	startNodeIndex = n
+
 			if (Nodes[n].p == target_position): 
 				endNodeIndex = n
 
@@ -287,7 +305,7 @@ class RoutePlanner(object):
 				if (Nodes[n].p.x == pos[1] and Nodes[n].p.y == -pos[0]):
 					Nodes[n].visited = True
 					break
-		
+
 		print("start:", startNodeIndex)
 		print("end:", endNodeIndex)
 
