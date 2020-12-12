@@ -54,9 +54,14 @@ class RoutePlanner(object):
 		# start position of robot, given as matrix position
 		self.robot_start_position = None
 
+		# set to true when all robots have been created and markers are ready
+		# prevents robots moving until everything has been set up
+		self.node_initalised = False
+
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 
 	def receive_map_update(self, robots):
+		self.node_initalised = True
 		self.check_path_for_robot_obstacles(robots)
 
 	def _odometry_callback(self, odometry):
@@ -106,12 +111,13 @@ class RoutePlanner(object):
 				if self.current_target == None:
 					self.path_to_next_item = self.new_path([self.shopping_list[0].x,self.shopping_list[0].y])
 				else:
-					# remove the food item at start of list, as robot has reached it
 					# if food items still remain
-					del self.shopping_list[0]
 					if (len(self.shopping_list) > 0):
+						del self.shopping_list[0]
+
 						# get path to next item
-						self.path_to_next_item = self.new_path([self.shopping_list[0].x,self.shopping_list[0].y])
+						if (len(self.shopping_list) > 0):
+							self.path_to_next_item = self.new_path([self.shopping_list[0].x,self.shopping_list[0].y])
 
 					# otherwise we are done
 					else:
@@ -119,7 +125,7 @@ class RoutePlanner(object):
 						self.movement.stop()
 
 		else:
-			self.status = "Following path " + self.shopping_list_to_string()
+			self.status = "Following path to " + self.shopping_list_to_string()
 
 			# next position on the current path, matrix position
 			self.current_target = self.path_to_next_item[0]
@@ -129,7 +135,7 @@ class RoutePlanner(object):
 			real_target = [real_x, real_y]
 
 			# call the movement function, returns true if robot has reached target
-			if (self.movement.movement_update(real_target, odometry, self.map_grid)):
+			if self.node_initalised and (self.movement.movement_update(real_target, odometry, self.map_grid)):
 
 				self.path_to_next_item.remove(self.current_target)
 
@@ -159,7 +165,7 @@ class RoutePlanner(object):
 		return
 
 	def new_path(self, matrix_position):
-		print("Getting path")
+		#print("Getting path")
 
 		# convert current position to matrix
 		startx, starty = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
@@ -353,12 +359,12 @@ class RoutePlanner(object):
 					Nodes[n].visited = True
 					break
 
-		print("start:", startNodeIndex)
-		print("end:", endNodeIndex)
+		#print("start:", startNodeIndex)
+		#print("end:", endNodeIndex)
 
 		Nodes[startNodeIndex].lDist = 0.0
 		Nodes[startNodeIndex].gDist = self.heuristic(start_position, target_position)
-		print(Nodes[startNodeIndex].gDist)
+		#print(Nodes[startNodeIndex].gDist)
 		cNI = startNodeIndex
 
 		notTestedNI = []
@@ -422,7 +428,7 @@ class RoutePlanner(object):
 
 	def sort(self, products_array, current_position):
 		""" Naive approach to sorting"""
-		print("Sorting started")
+		#print("Sorting started")
 		" If the list of products contains 1 or 0 items, the sorted list would be the same as the list of items"
 		# Base cases
 		if((len(products_array) == 0) or (len(products_array) == 1)):
