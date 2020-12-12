@@ -10,6 +10,7 @@ import 	route_planner.movement
 import 	math
 import 	random
 import copy
+import 	route_planner.food_item
 
 class RoutePlanner(object):
 
@@ -37,7 +38,7 @@ class RoutePlanner(object):
 		self.wait_for_obstacle_to_move = False
 
 		# text to display above robot in rviz, useful for letting us know what the robot is doing
-		self.status = ""
+		self.status = "Calculating path..."
 
 		self.name = name
 
@@ -53,13 +54,10 @@ class RoutePlanner(object):
 		# start position of robot, given as matrix position
 		self.robot_start_position = None
 
-		self.finished = False
-
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 
 	def receive_map_update(self, robots):
-		if not self.finished:
-			self.check_path_for_robot_obstacles(robots)
+		self.check_path_for_robot_obstacles(robots)
 
 	def _odometry_callback(self, odometry):
 		"""
@@ -88,6 +86,10 @@ class RoutePlanner(object):
 			# also take this chance to set the robot's start position so it can return here when done
 			self.robot_start_position = [mat_x, mat_y]
 
+			# create an imaginary food item in the kennel (start position) so the robot will end up here
+			kennel = route_planner.food_item.FoodItem(mat_x, mat_y, "Kennel")
+			self.shopping_list.append(kennel)
+
 		# don't allow any action if waiting
 		if self.is_waiting:
 			return
@@ -103,7 +105,7 @@ class RoutePlanner(object):
 				# so doesn't have a path to follow yet
 				if self.current_target == None:
 					self.path_to_next_item = self.new_path([self.shopping_list[0].x,self.shopping_list[0].y])
-				elif not self.finished:
+				else:
 					# remove the food item at start of list, as robot has reached it
 					# if food items still remain
 					del self.shopping_list[0]
@@ -113,12 +115,9 @@ class RoutePlanner(object):
 
 					# otherwise we are done
 					else:
-						self.finished = True
-						self.path_to_next_item = self.new_path(self.robot_start_position)
-				else:
-					self.status = "Inactive"
-					self.movement.stop()
-					return
+						self.status = "Inactive"
+						self.movement.stop()
+
 		else:
 			self.status = "Following path " + self.shopping_list_to_string()
 
@@ -140,7 +139,7 @@ class RoutePlanner(object):
 
 	def shopping_list_to_string(self):
 		if (len(self.shopping_list) == 0):
-			return "back to kennel"
+			return "Finished"
 		label = ""
 		for i in range(0, len(self.shopping_list)):
 			label += self.shopping_list[i].label
@@ -148,6 +147,16 @@ class RoutePlanner(object):
 				label += "-"
 
 		return label
+
+	def target_unreachable(self):
+		"""
+		If a target position cannot be reached (i.e. another robot is blocking it) return
+		to the kennel and then try again
+		"""
+		# create an imaginary food item in the kennel (start position) so the robot will end up here
+		kennel = route_planner.food_item.FoodItem(self.start_position[0], self.start_position[1], "Kennel")
+		self.shopping_list.insert(0, kennel)
+		return
 
 	def new_path(self, matrix_position):
 		print("Getting path")
@@ -172,11 +181,17 @@ class RoutePlanner(object):
 		ratio = 4
 
 		count = 0
+		index = 0
+		pl = len(path)
+
 		for pos in path:
-			if (count == ratio):
+			# cut out elements if count is not equal to ratio
+			# also make sure to always include the final step
+			if (count == ratio or index == pl-1):
 				count = 0
 				trimmed_path.append(pos)
 			count += 1
+			index += 1
 
 		return trimmed_path
 
@@ -190,7 +205,6 @@ class RoutePlanner(object):
 		self.robot_detection_range = 1
 
 		if (len(self.path_to_next_item) == 0):
-			self.status = "No path"
 			return
 
 		# get next position in list and convert to real
@@ -221,7 +235,7 @@ class RoutePlanner(object):
 
 		# if the robot that is blocking this robot is not in turn being blocked by this robot, just wait for it to pass by
 		# extra check- if the robot that is blocking has finished, don't wait for them to move as they never will
-		if (self.blocked_by.blocked_by == None and not self.blocked_by.finished):
+		if (self.blocked_by.blocked_by == None):
 			# set this to true so that this robot will not attempy to re-route, instead commits to waiting
 			self.is_waiting = True
 			self.status = "Waiting"
@@ -272,7 +286,7 @@ class RoutePlanner(object):
 			# if the target position is within the avoid array, this is bad because robot cannot reach target
 			# in this case, return to start position, should give the blocking robot a chance to move out the way
 			if f in avoid:
-				self.path_to_next_item = self.new_path(self.robot_start_position)
+				self.target_unreachable()
 				return
 
 			e = Point(f[1], -f[0],0)

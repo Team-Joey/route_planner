@@ -350,10 +350,10 @@ def create_shopping_list():
 
 	# min and max number of items allowed in shopping list
 	# assumes FOOD_ITEMS is as least long as max
-	min = 1
-	max = 2
+	min = 3
+	max = 5
 
-	count = random.randrange(min, max)
+	count = random.randrange(min, max+1)
 
 	for i in range(0, count):
 		randindex = random.randrange(0, len(FOOD_ITEMS))
