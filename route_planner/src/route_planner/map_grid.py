@@ -384,6 +384,9 @@ class MapGrid(object):
                
     def set_map(self, occupancy_map):
     
+        #TOGGLE BETWEEN WRITING AND READING CSV / .P
+        writing = True
+    
         #Set properties
         rospy.loginfo("Setting map properties...")
         self.width = occupancy_map.info.width
@@ -394,31 +397,83 @@ class MapGrid(object):
         self.origin_y = (occupancy_map.info.origin.position.y + (self.height / 2.0) * self.resolution)
         rospy.loginfo("Map properties set.")
 
-        #Convert row-major occupancy map data (one list) to a list of lists (abstract array structure)
-        gridAsListOfLists = self.get_map_as_lists(list(occupancy_map.data), self.height, self.width)
-        self.list = gridAsListOfLists
-        
-        #Reduced dimensions, more prime factors, different options of resolution reduction
-        gridAsArray = self.trim_map(gridAsListOfLists, self.height, self.width)
-        
-
-        #Output for testing
-        #self.output_rgb_image_from_array(gridAsArray,'a')
         self.resolution_reduction_scale = 3
-        #infoArray = self.reduce_resolution(gridAsArray,self.resolution_reduction_scale,self.resolution_reduction_scale)
-        #self.output_rgb_image_from_array(infoArray[0], 'a')
-        
-        gridAsArray = self.expand_walls(gridAsArray,10)
-        infoArray = self.reduce_resolution_weighted(gridAsArray, self.resolution_reduction_scale, self.resolution_reduction_scale, 3)
-        self.gridArray = infoArray[0]
-        self.output_rgb_image_from_array(infoArray[0], 'a')
-        
 
-        #self.output_greyscale_image_from_array(infoArray[1], 'notres_reduced_weighted3_greyscale.png')
+        if(writing):
+           
+            #Convert row-major occupancy map data (one list) to a list of lists (abstract array structure)
+            gridAsListOfLists = self.get_map_as_lists(list(occupancy_map.data), self.height, self.width)
+            self.list = gridAsListOfLists
         
-        #self.output_greyscale_image_from_array(self.expand_walls(gridAsArray,0),'expanded_walls_e0.png')
+            #Reduced dimensions, more prime factors, different options of resolution reduction
+            gridAsArray = self.trim_map(gridAsListOfLists, self.height, self.width)
+            
+            with open('ocgridtemp.csv', 'w') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerows(gridAsArray)
         
-        #print(infoArray[3])
+            infoArray = self.reduce_resolution_weighted(gridAsArray, self.resolution_reduction_scale, self.resolution_reduction_scale, 3)
+            self.gridArray = infoArray[0]
+            
+            with open('gridarray.csv', 'w') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerows(self.gridArray)
+                
+            with open('walls.csv', 'w') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerows(self.walls)
+                
+            with open('opennodes.csv', 'w') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerows(self.openNodes)
+                
+            with open('gridnodes.p', 'wb') as picklefile:
+                pickle.dump(self.gridNodes, picklefile)
+                
+        else:
+        
+            with open('gridarray.csv') as csvfile:
+                lines = csvfile.readlines()
+                array = []
+                for line in lines:
+                    line = line.replace("\n","")           #replace eol characters
+                    line = line.split(",")                 #split on commas
+                    newline = [int(item) for item in line] #list comprehension
+                    array.append(newline)
+                self.gridArray = np.asarray(array)
+                
+            with open('ocgridtemp.csv') as csvfile:
+                lines = csvfile.readlines()
+                array = []
+                for line in lines:
+                    line = line.replace("\n","")           
+                    line = line.split(",")                 
+                    newline = [int(item) for item in line]
+                    array.append(newline)
+                self.OC_GRID_TEMP = np.asarray(array)
+                
+            with open('walls.csv') as csvfile:
+                lines = csvfile.readlines()
+                walls = []
+                for line in lines:
+                    line = line.replace("\n", "")
+                    line = line.split(",")
+                    newline = [int(item) for item in line]
+                    walls.append(newline)
+                self.walls = walls
+                
+            with open('opennodes.csv') as csvfile:
+                lines = csvfile.readlines()
+                openNodes = []
+                for line in lines:
+                    line = line.replace("\n", "")
+                    line = line.split(",")
+                    newline = [int(item) for item in line]
+                    openNodes.append(newline)
+                self.openNodes = openNodes
+            
+            with open('gridnodes.p', 'rb') as picklefile:
+                self.gridNodes = pickle.load(picklefile)
 
     def rotate(self, origin, point, angle):
     	ox, oy = origin
