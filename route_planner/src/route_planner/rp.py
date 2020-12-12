@@ -58,12 +58,10 @@ class RoutePlanner(object):
 		If the robot's task list is not empty, the function
 		checks if it is close enough. then updates target.
 		"""
-		if(self.not_sorted):
-			self.shopping_list = sort(self.shopping_list)
-			self.not_sorted = True
+		
 
 		self.current_pose = odometry.pose
-
+		
 		# before adding origin, odom needs to be scaled
 		scalefactor = 0.725
 
@@ -72,7 +70,13 @@ class RoutePlanner(object):
 
 		self.current_pose.pose.position.x += self.map_grid.origin_x
 		self.current_pose.pose.position.y += self.map_grid.origin_y
-
+		
+		self.current_position = Point(self.current_pose.pose.position.x, self.current_pose.pose.position.y, 0)
+		
+		if(self.not_sorted):
+			self.shopping_list = sort(self.shopping_list, current_position)
+			self.not_sorted = True
+		
 		# don't allow any action if waiting
 		if self.is_waiting:
 			return
