@@ -408,8 +408,8 @@ def create_shopping_list():
 
 	# min and max number of items allowed in shopping list
 	# assumes FOOD_ITEMS is as least long as max
-	min = 1
-	max = 1
+	min = 2
+	max = 5
 
 	count = random.randrange(min, max+1)
 
