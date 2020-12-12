@@ -5,7 +5,7 @@ import 	route_planner
 import 	route_planner.rp
 
 import 	sys
-from 	geometry_msgs.msg 	import PoseStamped
+from 	geometry_msgs.msg 	import PoseStamped, Point
 from 	tf.msg 			import tfMessage
 from 	sensor_msgs.msg 	import LaserScan
 from 	nav_msgs.msg 		import OccupancyGrid, Odometry
@@ -24,13 +24,22 @@ MARKER_PUB = None
 MAP_GRID = None
 MARKERS = []
 
+# array of [r,g,b]
+ROBOT_COLOURS = [
+[1,0,0],
+[0,1,0],
+[1,1,1],
+[0,0,0],
+[1,0,1]
+]
+
 # how long do markers stay in rviz before getting removed
 # lower durations tend to lead to flashing markers
 # and duration of zero leads to markers not deleting properly
 MARKER_DURATION = 0.5
 
 class RoutePlannerNode(object):
-	def __init__(self, robotname, placeholder_shopping_list):
+	def __init__(self, robotname, placeholder_shopping_list, colour):
 		rospy.loginfo("Node initialisation...") 				# Information is only logged after a node instance has been created
 
 		# ----- Minimum change DELTA before publishing a pose
@@ -38,17 +47,18 @@ class RoutePlannerNode(object):
 		self._latest_scan = None
 		self._last_published_pose = None
 		self.name = robotname
+		self.colour = colour
 
 		# robot name is a unique identifier e.g. robot_0, robot_1 etc
 		current_pose_topic = robotname + "/current_pose"
 		base_scan_topic = robotname + "/base_scan"
 		odom_topic = robotname + "/odom"
 		cmd_vel = robotname + "/cmd_vel"
-		
+
 		self._pose_publisher = rospy.Publisher(current_pose_topic, PoseStamped, queue_size=1)	# Publishes the position of the robot for visualisaion
 		self._tf_publisher = rospy.Publisher("/tf", tfMessage, queue_size=1)			# Publishes tf message for debugging
 		self._cmd_vel = rospy.Publisher(cmd_vel, Twist, queue_size=100)				# Publishes tf message for debugging
-		
+
 		self._route_planner = route_planner.rp.RoutePlanner(self._cmd_vel, placeholder_shopping_list, MAP_GRID, robotname)
 
 		# subscribe to the odom and laser topics for this robot
@@ -70,9 +80,6 @@ def update():
 	# array of markers to diplay in rviz, includes robots and food items
 	markers = []
 
-	# MAP_GRID probably needs to be updated here
-	# MAP_GRID = update_map_grid()
-
 	# extract RoutePlanner objects from RoutePlannerNodes (ROBOTS)
 	robots = extract_robots()
 
@@ -84,31 +91,33 @@ def update():
 		# create a marker for the robot and append to marker array
 		markers += (create_robot_marker(robot, id))
 
-		# +2 because two markers are created- shape and text
-		id += 2
+		# +3 because three markers are created- shape, text, and arrow
+		id += 3
 
 		count = 0
+
+		previous_pos = None
 		for pos in robot._route_planner.path_to_next_item:
 
 			x = pos[0]
 			y = pos[1]
 
-			markers.append(create_path_marker(x,y,id))#(create_food_marker(food_item, id))
+			real_x, real_y = MAP_GRID.matrix_to_real(x, y)
+
+			start = previous_pos
+			end = Point(real_x, real_y, 0)
+
+			# if no previous position exists, start point is the robot's current pos
+			if (previous_pos == None):
+				start = Point(robot._route_planner.current_pose.pose.position.x, robot._route_planner.current_pose.pose.position.y, 0)
+
+
+			markers.append(create_path_marker(x, y, id, start, end, robot))
+
+			previous_pos = end
+
 			id += 1
 			count+=1
-
-		# testing blocked nodes-------------------
-
-		#for pos in robot._route_planner.blocked_nodes:
-
-		#	x = pos[0]
-		#	y = pos[1]
-
-		#	markers.append(create_path_marker(x,y,id))
-		#	id += 1
-		#	count+=1
-
-		#-----------------------------------------
 
 		id+=1
 
@@ -120,58 +129,62 @@ def update():
 
 	MARKER_PUB.publish(markers)
 
-def create_path_marker(x,y,id):
+# draws line between a given start and end pos
+def create_path_marker(x,y,id, start, end, robot):
 	marker = Marker()
 	marker.header.frame_id = "/map"
 	marker.header.stamp    = rospy.get_rostime()
 	#marker.ns = robot.name
 	marker.id = id
-	marker.type = 1 # sphere
+	marker.type = marker.LINE_STRIP
 	marker.action = 0
 
-	# need to add offset to marker position
-	real_x, real_y = MAP_GRID.matrix_to_real(x, y)
-	marker.pose.position.x = real_x
-	marker.pose.position.y = real_y
-
 	marker.lifetime = rospy.Duration(MARKER_DURATION)
-	
-	marker.scale.x = 0.25
-	marker.scale.y = 0.25
-	marker.scale.z = 0.25
 
-	marker.color.r = 1.0
-	marker.color.g = 1.0
-	marker.color.b = 0.0
-	marker.color.a = 1.0
+	marker.scale.x = 0.1
+	marker.scale.y = 0.1
+	marker.scale.z = 0.1
+
+	marker.color.r = robot.colour[0]
+	marker.color.g = robot.colour[1]
+	marker.color.b = robot.colour[2]
+	marker.color.a = 0.5
+
+
+	marker.points = []
+	# first point
+	marker.points.append(start)
+	# second point
+	marker.points.append(end)
 
 	return marker
 
 # returns an array containing a shape marker and a text marker
 def create_robot_marker(robot, id):
+
+	# body of robot
 	robotMarker = Marker()
 	robotMarker.header.frame_id = "/map"
 	robotMarker.header.stamp    = rospy.get_rostime()
 	robotMarker.ns = robot.name
 	robotMarker.id = id
-	robotMarker.type = 1 # sphere
+	robotMarker.type = 1
 	robotMarker.action = 0
 
-	# need to add offset to marker position
 	robotMarker.pose.position.x = robot._route_planner.current_pose.pose.position.x
 	robotMarker.pose.position.y = robot._route_planner.current_pose.pose.position.y
 	robotMarker.pose.orientation = robot._route_planner.current_pose.pose.orientation
 
 	robotMarker.lifetime = rospy.Duration(MARKER_DURATION)
-	
+
 	robotMarker.scale.x = 0.5
 	robotMarker.scale.y = 0.5
 	robotMarker.scale.z = 0.5
 
-	robotMarker.color.r = 0.0
-	robotMarker.color.g = 1.0
-	robotMarker.color.b = 0.0
-	robotMarker.color.a = 1.0
+	robotMarker.color.r = robot.colour[0]
+	robotMarker.color.g = robot.colour[1]
+	robotMarker.color.b = robot.colour[2]
+	robotMarker.color.a = 1
 
 
 	robotMarkerText = Marker()
@@ -180,7 +193,7 @@ def create_robot_marker(robot, id):
 	robotMarkerText.ns = robot.name + "_text"
 
 	robotMarkerText.id = id + 1
-	robotMarkerText.type = Marker.TEXT_VIEW_FACING#2 # sphere
+	robotMarkerText.type = Marker.TEXT_VIEW_FACING
 	robotMarkerText.action = 0
 	robotMarkerText.text=str(robot._route_planner.status)
 
@@ -190,7 +203,7 @@ def create_robot_marker(robot, id):
 	robotMarkerText.pose.position.z = 2
 
 	robotMarkerText.lifetime = rospy.Duration(MARKER_DURATION)
-	
+
 	robotMarkerText.scale.x = 0.5
 	robotMarkerText.scale.y = 0.5
 	robotMarkerText.scale.z = 0.5
@@ -200,7 +213,36 @@ def create_robot_marker(robot, id):
 	robotMarkerText.color.b = 1.0
 	robotMarkerText.color.a = 1.0
 
-	return [robotMarker, robotMarkerText]
+
+	# arrow marker
+	arrow = Marker()
+	arrow.header.frame_id = "/map"
+	arrow.header.stamp    = rospy.get_rostime()
+	arrow.ns = robot.name
+	arrow.id = id + 2
+	arrow.type = 0
+	arrow.action = 0
+
+	# need to add offset to marker position
+	arrow.pose.position.x = robot._route_planner.current_pose.pose.position.x
+	arrow.pose.position.y = robot._route_planner.current_pose.pose.position.y
+
+	# make arrow visible above robot
+	arrow.pose.position.z = 0.75
+	arrow.pose.orientation = robot._route_planner.current_pose.pose.orientation
+
+	arrow.lifetime = rospy.Duration(MARKER_DURATION)
+
+	arrow.scale.x = 1
+	arrow.scale.y = .2
+	arrow.scale.z = .2
+
+	arrow.color.r = robot.colour[0]
+	arrow.color.g = robot.colour[1]
+	arrow.color.b = robot.colour[2]
+	arrow.color.a = 1
+
+	return [robotMarker, robotMarkerText, arrow]
 
 # returns an array containing a shape marker and a text marker
 def create_food_marker(food_item, id):
@@ -218,7 +260,7 @@ def create_food_marker(food_item, id):
 	foodMarker.pose.position.y = real_y
 
 	foodMarker.lifetime = rospy.Duration(MARKER_DURATION)
-	
+
 	foodMarker.scale.x = 0.5
 	foodMarker.scale.y = 0.5
 	foodMarker.scale.z = 0.5
@@ -245,7 +287,7 @@ def create_food_marker(food_item, id):
 	foodMarkerText.pose.position.z = 2
 
 	foodMarkerText.lifetime = rospy.Duration(MARKER_DURATION)
-	
+
 	foodMarkerText.scale.x = 0.5
 	foodMarkerText.scale.y = 0.5
 	foodMarkerText.scale.z = 0.5
@@ -256,6 +298,34 @@ def create_food_marker(food_item, id):
 	foodMarkerText.color.a = 1.0
 
 	return [foodMarker, foodMarkerText]
+
+def sort(products_array, current_position):
+	""" Naive approach to sorting"""
+	print("Sorting started")
+	" If the list of products contains 1 or 0 items, the sorted list would be the same as the list of items"
+	# Base cases
+	if((len(products_array) == 0) or (len(products_array) == 1)):
+		return products_array
+
+	sorted_array = []
+	shortest_path = len(A_star(current_position, products_array[0]))
+	shortest_index = 0
+	closest_product = products_array[0]
+
+	# Find the shortest path to next item. If 2 items are equaly close,
+	# Take the one with the smaller index value
+	for product in products_array:
+		if (len(A_star(current_position, product)) < shortest_path):
+			shortest_path = len(A_star(current_position, product))
+			shortest_index = products_array.index(product)
+			closest_product = product
+
+	# Add the closest product to the sorted array
+	sorted_array.append(closest_product)
+	products_array.pop(shortest_index)
+
+	# Recursively sort the entire list
+	return sorted_array + (sort(products_array, closest_product))
 
 def place_food():
 	"""
@@ -296,7 +366,9 @@ def place_food():
 					valid = False
 					break
 			if (valid):
-				f = route_planner.food_item.FoodItem(coords[0],coords[1],"food " )
+				# get ascii code and convert to char
+				label = chr(65 + food_to_place)
+				f = route_planner.food_item.FoodItem(coords[0],coords[1], label)
 				FOOD_ITEMS.append(f)
 				food_to_place-=1
 
@@ -327,9 +399,30 @@ def check_surroundings(origin_x, origin_y, area_size):
 						return False
 	return True
 
+def create_shopping_list():
+	"""
+	Return a random list of items from the global FOOD_ITEMS list
+	"""
+
+	shopping_list = []
+
+	# min and max number of items allowed in shopping list
+	# assumes FOOD_ITEMS is as least long as max
+	min = 1
+	max = 1
+
+	count = random.randrange(min, max+1)
+
+	for i in range(0, count):
+		randindex = random.randrange(0, len(FOOD_ITEMS))
+		food = FOOD_ITEMS[randindex]
+		shopping_list.append(food)
+
+	return shopping_list
+
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-	rospy.init_node('Joey', anonymous = True) 	# (anonymous = True) ensures the name is unique for each node 
+	rospy.init_node('Joey', anonymous = True) 	# (anonymous = True) ensures the name is unique for each node
 	rospy.loginfo("Creating the node instance...")
 
 	# ----- Then set the occupancy grid map
@@ -340,14 +433,11 @@ if __name__ == '__main__':
 		rospy.logerr("Problem getting a map. Check that you have a map_server"
 						" running: rosrun map_server map_server <mapname> " )
 		sys.exit(1)
-	
+
 	rospy.loginfo("Map received. %d X %d, %f m/px." % (ocuccupancy_map.info.width, ocuccupancy_map.info.height, ocuccupancy_map.info.resolution))
 	MAP_GRID =  route_planner.map_grid.MapGrid()
 	MAP_GRID.set_map(ocuccupancy_map)
 	place_food()
-
-	# add all food items to all robots' shopping lists for now
-	placeholder_shopping_list = FOOD_ITEMS
 
 	# get all published topics
 	# find how many robots are active
@@ -360,10 +450,11 @@ if __name__ == '__main__':
 	# create as many nodes as there are robots in the map
 	# if only one robot, do not index the name
 	for i in range(0, robotnum):
+		shopping_list = create_shopping_list()
 		if robotnum == 1:
-			ROBOTS.append(RoutePlannerNode("", placeholder_shopping_list))
-		else: 
-			ROBOTS.append(RoutePlannerNode("robot_"+str(i), placeholder_shopping_list))
+			ROBOTS.append(RoutePlannerNode("", shopping_list, ROBOT_COLOURS[i]))
+		else:
+			ROBOTS.append(RoutePlannerNode("robot_"+str(i),shopping_list, ROBOT_COLOURS[i]))
 
 	if (robotnum > 0):
 		task_incomplete = True
@@ -378,4 +469,3 @@ if __name__ == '__main__':
 		print("End.")
 	else:
 		print("No robots added to the world file, or stage_ros is not running")
-
