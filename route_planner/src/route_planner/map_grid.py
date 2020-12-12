@@ -387,7 +387,7 @@ class MapGrid(object):
     def set_map(self, occupancy_map):
 
         #TOGGLE BETWEEN WRITING AND READING CSV / .P
-        writing = True
+        writing = False
 
         #Set properties
         rospy.loginfo("Setting map properties...")
@@ -414,6 +414,7 @@ class MapGrid(object):
                 writer = csv.writer(csvfile)
                 writer.writerows(gridAsArray)
 
+            gridAsArray = self.expand_walls(gridAsArray,10)
             infoArray = self.reduce_resolution_weighted(gridAsArray, self.resolution_reduction_scale, self.resolution_reduction_scale, 3)
             self.gridArray = infoArray[0]
 

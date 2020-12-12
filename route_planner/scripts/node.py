@@ -70,9 +70,6 @@ def update():
 	# array of markers to diplay in rviz, includes robots and food items
 	markers = []
 
-	# MAP_GRID probably needs to be updated here
-	# MAP_GRID = update_map_grid()
-
 	# extract RoutePlanner objects from RoutePlannerNodes (ROBOTS)
 	robots = extract_robots()
 
@@ -96,19 +93,6 @@ def update():
 			markers.append(create_path_marker(x,y,id))#(create_food_marker(food_item, id))
 			id += 1
 			count+=1
-
-		# testing blocked nodes-------------------
-
-		#for pos in robot._route_planner.blocked_nodes:
-
-		#	x = pos[0]
-		#	y = pos[1]
-
-		#	markers.append(create_path_marker(x,y,id))
-		#	id += 1
-		#	count+=1
-
-		#-----------------------------------------
 
 		id+=1
 
@@ -324,7 +308,9 @@ def place_food():
 					valid = False
 					break
 			if (valid):
-				f = route_planner.food_item.FoodItem(coords[0],coords[1],"food " )
+				# get ascii code and convert to char
+				label = chr(65 + food_to_place)
+				f = route_planner.food_item.FoodItem(coords[0],coords[1], label)
 				FOOD_ITEMS.append(f)
 				food_to_place-=1
 
@@ -355,6 +341,27 @@ def check_surroundings(origin_x, origin_y, area_size):
 						return False
 	return True
 
+def create_shopping_list():
+	"""
+	Return a random list of items from the global FOOD_ITEMS list
+	"""
+
+	shopping_list = []
+
+	# min and max number of items allowed in shopping list
+	# assumes FOOD_ITEMS is as least long as max
+	min = 1
+	max = 2
+
+	count = random.randrange(min, max)
+
+	for i in range(0, count):
+		randindex = random.randrange(0, len(FOOD_ITEMS))
+		food = FOOD_ITEMS[randindex]
+		shopping_list.append(food)
+
+	return shopping_list
+
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
 	rospy.init_node('Joey', anonymous = True) 	# (anonymous = True) ensures the name is unique for each node
@@ -374,9 +381,6 @@ if __name__ == '__main__':
 	MAP_GRID.set_map(ocuccupancy_map)
 	place_food()
 
-	# add all food items to all robots' shopping lists for now
-	placeholder_shopping_list = FOOD_ITEMS
-
 	# get all published topics
 	# find how many robots are active
 	topics = rospy.get_published_topics()
@@ -388,10 +392,11 @@ if __name__ == '__main__':
 	# create as many nodes as there are robots in the map
 	# if only one robot, do not index the name
 	for i in range(0, robotnum):
+		shopping_list = create_shopping_list()
 		if robotnum == 1:
-			ROBOTS.append(RoutePlannerNode("", placeholder_shopping_list))
+			ROBOTS.append(RoutePlannerNode("", shopping_list))
 		else:
-			ROBOTS.append(RoutePlannerNode("robot_"+str(i), placeholder_shopping_list))
+			ROBOTS.append(RoutePlannerNode("robot_"+str(i),shopping_list))
 
 	if (robotnum > 0):
 		task_incomplete = True

@@ -47,10 +47,19 @@ class RoutePlanner(object):
 		self.is_waiting = False
 		self.not_sorted = True
 
+		# current position the robot is aiming for
+		self.current_target = None
+
+		# start position of robot, given as matrix position
+		self.robot_start_position = None
+
+		self.finished = False
+
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 
 	def receive_map_update(self, robots):
-		self.check_path_for_robot_obstacles(robots)
+		if not self.finished:
+			self.check_path_for_robot_obstacles(robots)
 
 	def _odometry_callback(self, odometry):
 		"""
@@ -59,7 +68,6 @@ class RoutePlanner(object):
 		checks if it is close enough. then updates target.
 		"""
 		
-
 		self.current_pose = odometry.pose
 		
 		# before adding origin, odom needs to be scaled
@@ -71,64 +79,96 @@ class RoutePlanner(object):
 		self.current_pose.pose.position.x += self.map_grid.origin_x
 		self.current_pose.pose.position.y += self.map_grid.origin_y
 		
-		self.current_position = Point(self.current_pose.pose.position.x, self.current_pose.pose.position.y, 0)
-		
-		if(self.not_sorted):
-			self.shopping_list = sort(self.shopping_list, current_position)
-			self.not_sorted = True
-		
+		if (self.not_sorted):
+			mat_x, mat_y = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
+			current_position = Point(mat_x, -mat_y, 0)
+			self.shopping_list = self.sort(self.shopping_list, current_position)
+			self.not_sorted = False
+
+			# also take this chance to set the robot's start position so it can return here when done
+			self.robot_start_position = [mat_x, mat_y]
+
 		# don't allow any action if waiting
 		if self.is_waiting:
 			return
 
-		# if another robot is in the way, wait for them to move
-		# issue order to stop movement
+		# if another robot is in the way, need to wait or re-route
 		if not self.blocked_by == None:
 			self.wait_or_replan()
 			return
 
+		# if reached end of path
 		if len(self.path_to_next_item) == 0:
-				print("Finished path, either we are done or need to get path to next item")
-				self.path_to_next_item = self.new_path()
-		else:
-			self.status = "Following path"
-			# next position on the current path, matrix position
-			current_target = self.path_to_next_item[0]
+				# if current target is None, this means the robot has just been created
+				# so doesn't have a path to follow yet
+				if self.current_target == None:
+					self.path_to_next_item = self.new_path([self.shopping_list[0].x,self.shopping_list[0].y])
+				elif not self.finished:
+					# remove the food item at start of list, as robot has reached it
+					# if food items still remain
+					del self.shopping_list[0]
+					if (len(self.shopping_list) > 0):
+						# get path to next item
+						self.path_to_next_item = self.new_path([self.shopping_list[0].x,self.shopping_list[0].y])
 
-			real_x, real_y = self.map_grid.matrix_to_real(current_target[0], current_target[1])
+					# otherwise we are done
+					else:
+						self.finished = True
+						self.path_to_next_item = self.new_path(self.robot_start_position)
+				else:
+					self.status = "Inactive"
+					self.movement.stop()
+					return
+		else:
+			self.status = "Following path " + self.shopping_list_to_string()
+
+			# next position on the current path, matrix position
+			self.current_target = self.path_to_next_item[0]
+
+			real_x, real_y = self.map_grid.matrix_to_real(self.current_target[0], self.current_target[1])
 
 			real_target = [real_x, real_y]
 
 			# call the movement function, returns true if robot has reached target
 			if (self.movement.movement_update(real_target, odometry, self.map_grid)):
 
-				self.path_to_next_item.remove(current_target)
+				self.path_to_next_item.remove(self.current_target)
 
 				if len(self.path_to_next_item) > 0:
 					# ---- Change target and remove it from task list
-					current_target = self.path_to_next_item[0]
+					self.current_target = self.path_to_next_item[0]
 
-	def new_path(self):
-		print("Getting path to random food item")
-		self.has_requested_new_path = True
+	def shopping_list_to_string(self):
+		if (len(self.shopping_list) == 0):
+			return "back to kennel"
+		label = ""
+		for i in range(0, len(self.shopping_list)):
+			label += self.shopping_list[i].label
+			if (i < len(self.shopping_list)-1):
+				label += "-"
+
+		return label
+
+	def new_path(self, matrix_position):
+		print("Getting path")
+
 		# convert current position to matrix
 		startx, starty = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
 
 		s = Point(startx, -starty, 0)
 
-		# choose random food item from shopping list as target
-		randindex = random.randrange(0, len(self.shopping_list))
-		f = self.shopping_list[randindex]
-
 		# NOTE: converting to integer is needed otherwise path will not be found
-		e = Point(int(f.x),int(-f.y),0)
+		e = Point(int(matrix_position[0]),int(-matrix_position[1]),0)
 
 		path = self.A_star(s,e, [])
 
+		return self.trim_path(path)
+
+	def trim_path(self, path):
 		# cut out some waypoints, slows robot down a lot otherwise
 		trimmed_path = []
 
-		# ratio is how many waypoints will be skipped when trimming
+		# ratio is how many waypoints will be skipped when trimming 
 		ratio = 4
 
 		count = 0
@@ -154,8 +194,6 @@ class RoutePlanner(object):
 			return
 
 		# get next position in list and convert to real
-
-
 		for r in robots:
 			# don't apply this for this robot object
 			if not(r == self):
@@ -182,7 +220,8 @@ class RoutePlanner(object):
 		self.movement.stop()
 
 		# if the robot that is blocking this robot is not in turn being blocked by this robot, just wait for it to pass by
-		if (self.blocked_by.blocked_by == None):
+		# extra check- if the robot that is blocking has finished, don't wait for them to move as they never will
+		if (self.blocked_by.blocked_by == None and not self.blocked_by.finished):
 			# set this to true so that this robot will not attempy to re-route, instead commits to waiting
 			self.is_waiting = True
 			self.status = "Waiting"
@@ -192,32 +231,58 @@ class RoutePlanner(object):
 			self.status = "Re-routing"
 			# collect up all matrix positions to avoid
 			avoid = []
-			avoid.append(self.map_grid.real_to_matrix(self.blocked_by.current_pose.pose.position.x, self.blocked_by.current_pose.pose.position.x))
-			for i in range (0, 2):
-				if i < len(self.blocked_by.path_to_next_item):
-					pos = self.blocked_by.path_to_next_item[i]
+			thisx, thisy = (self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y))
 
-					# add all nodes in a 10x10 area so a large area is avoided
-					capturearea = 20
-					for x in range (-capturearea,capturearea):
-						for y in range (-capturearea,capturearea):
-							newx = pos[0] + x
-							newy = pos[1] + y
-							if (newx >= 0 and newx < self.map_grid.width):
-								if (newy >= 0 and newy < self.map_grid.height):
-									avoid.append([newx, newy])
+			other_x, other_y = (self.map_grid.real_to_matrix(self.blocked_by.current_pose.pose.position.x, self.blocked_by.current_pose.pose.position.y))
+			
+			avoid = []
+			pos = [other_x, other_y]
+			# add all nodes in a large area around the blocking robot
+			capturearea = 10
+			for x in range (-capturearea,capturearea):
+				for y in range (-capturearea,capturearea):
+					newx = pos[0] + x
+					newy = pos[1] + y
+					if (newx >= 0 and newx < self.map_grid.width):
+						if (newy >= 0 and newy < self.map_grid.height):
+							avoid.append([newy, newx])
+
+
+
+			thisx, thisy = (self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y))
+			this_pos = [thisx, thisy]
+			capturearea = 10
+			for x in range (-capturearea,capturearea):
+				for y in range (-capturearea,capturearea):
+					newx = this_pos[0] + x
+					newy = this_pos[1] + y
+					if (newx >= 0 and newx < self.map_grid.width):
+						if (newy >= 0 and newy < self.map_grid.height):
+							if [newy, newx] in avoid:
+								avoid.remove([newy, newx])
+
+			self.blocked_nodes = avoid
 
 			# now call pathfinding with this list of nodes to avoid
 			startx, starty = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
 			s = Point(startx, -starty, 0)
 
 			f = self.path_to_next_item[len(self.path_to_next_item)-1]
-			e = Point(f[0], f[1],0)
 
-			self.path_to_next_item = self.A_star(s,e, avoid)
+			# if the target position is within the avoid array, this is bad because robot cannot reach target
+			# in this case, return to start position, should give the blocking robot a chance to move out the way
+			if f in avoid:
+				self.path_to_next_item = self.new_path(self.robot_start_position)
+				return
+
+			e = Point(f[1], -f[0],0)
+
+
+			self.path_to_next_item = self.trim_path(self.A_star(s,e, avoid))
 
 			if (len(self.path_to_next_item) == 0):
-				self.status = "Can't reach target"
+				# can't reach target, so try returning to start position
+				self.path_to_next_item = self.new_path(self.robot_start_position)
 			else:
 				self.status = "Succesful re-route"
 
@@ -234,15 +299,18 @@ class RoutePlanner(object):
 
 	def A_star(self, start_position, target_position, avoid):
 		"""
-		Find shortest path from a given start "position" to
+		Find shortest path from a given start "position" to 
 		a given target "position" (using A* algorithm)
 		Return: Array of pixel "coordinates" the robot would visit
-
 		EXTRA: the parameter 'avoid' is an array of matrix positions that a* should avoid
 		"""
 		Nodes = self.map_grid.gridNodes
 		startNodeIndex = None
 		endNodeIndex = None
+
+		lowestDist = 9999999999
+
+		startx, starty = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
 
 		#Reset all nodes' parent, visited and distance values
 		for n in range(0, len(Nodes)):
@@ -251,10 +319,25 @@ class RoutePlanner(object):
 			Nodes[n].gDist = 999999999999999999
 			Nodes[n].parent = None
 			#Set starting and ending nodes
-			if (Nodes[n].p == start_position):
+
+			# robots can sometimes get out of sync with matrix, which means they are slightly off the map/ inside a wall
+			# by choosing the nearest start node instead of the exact one, can solve this issue
+			dist = math.sqrt( (Nodes[n].p.x - startx)**2 + (Nodes[n].p.y - -starty)**2 )
+			if (dist < lowestDist):
+				lowestDist = dist
 				startNodeIndex = n
-			if (Nodes[n].p == target_position):
+
+			if (Nodes[n].p == target_position): 
 				endNodeIndex = n
+
+			# if the current node is in the avoid list, mark it as already visited
+			# this will mean the algorithm does ignore's it as a viable
+			current = [Nodes[n].p.x, Nodes[n].p.y]
+			for pos in avoid:
+				# x and y must be flipped
+				if (Nodes[n].p.x == pos[1] and Nodes[n].p.y == -pos[0]):
+					Nodes[n].visited = True
+					break
 
 		print("start:", startNodeIndex)
 		print("end:", endNodeIndex)
@@ -267,16 +350,16 @@ class RoutePlanner(object):
 		notTestedNI = []
 		#Add start node to list of not visited nodes
 		notTestedNI.append(startNodeIndex)
-
+		
 		#Loop while there are nodes to test
 		while (notTestedNI):
-
+			
 			#Set current node to node with the least g distance
 			cNI = notTestedNI[0]
 			for n in range(0, len(notTestedNI)):
 				if (Nodes[cNI].gDist > Nodes[notTestedNI[n]].gDist):
 					cNI = notTestedNI[n]
-
+			
 			#print(cNI)
 			#print(Nodes[cNI].neighbours)
 			Nodes[cNI].visited = True
@@ -284,23 +367,16 @@ class RoutePlanner(object):
 			#End loop if path is found
 			if cNI == endNodeIndex:
 				break
-
+			
 			#Loop through the current nodes' neighbours or "children"
 			for n in range(0, len(Nodes[cNI].neighbours)):
-
+				
 				#Add neighbour to list if it hasn't been visited and isn't an obstacle
 				k = Nodes[cNI].neighbours[n]
 				if ((Nodes[k].visited == False) and (Nodes[k].isObstacle == False)):
 					# check each position in the avoid array, if any match the current node, treat
 					# this node as an obstacle
-					ignore = False
-					for pos in avoid:
-						if (Nodes[k].p.x == pos[0] and Nodes[k].p.y == pos[1]):
-							ignore = True
-							break
-
-					if not ignore:
-						if k not in notTestedNI: notTestedNI.append(k)
+					if k not in notTestedNI: notTestedNI.append(k)
 
 				possiblyLowerDist = Nodes[cNI].lDist + self.distance(Nodes[cNI].p, Nodes[k].p)
 
@@ -311,8 +387,8 @@ class RoutePlanner(object):
 
 			#Remove visited node
 			notTestedNI.remove(cNI)
-			#print(notTestedNI)
-
+			#print(notTestedNI)            
+		
 		path = []
 		if cNI == endNodeIndex:
 			while Nodes[cNI].parent != None:
@@ -330,9 +406,7 @@ class RoutePlanner(object):
 		"""Set the map"""
 		self.map_grid.set_map(occupancy_map)
 
-
-
-	def sort(products_array, current_position):
+	def sort(self, products_array, current_position):
 		""" Naive approach to sorting"""
 		print("Sorting started")
 		" If the list of products contains 1 or 0 items, the sorted list would be the same as the list of items"
@@ -340,16 +414,23 @@ class RoutePlanner(object):
 		if((len(products_array) == 0) or (len(products_array) == 1)):
 			return products_array
 
+		matrix_pos = [products_array[0].x, products_array[0].y]
+		end = Point(matrix_pos[0], -matrix_pos[1], 0)
+
 		sorted_array = []
-		shortest_path = len(A_star(current_position, products_array[0]))
+		shortest_path = len(self.A_star(current_position, end, []))
 		shortest_index = 0
 		closest_product = products_array[0]
 
 		# Find the shortest path to next item. If 2 items are equaly close,
 		# Take the one with the smaller index value
 		for product in products_array:
-			if (len(A_star(current_position, product)) < shortest_path):
-				shortest_path = len(A_star(current_position, product))
+
+			matrix_pos = [product.x, product.y]
+			point = Point(matrix_pos[0], -matrix_pos[1], 0)
+
+			if (len(self.A_star(current_position, point, [])) < shortest_path):
+				shortest_path = len(self.A_star(current_position, point, []))
 				shortest_index = products_array.index(product)
 				closest_product = product
 
@@ -358,7 +439,7 @@ class RoutePlanner(object):
 		products_array.pop(shortest_index)
 
 		# Recursively sort the entire list
-		return sorted_array + (sort(products_array, closest_product))
+		return sorted_array + (self.sort(products_array, closest_product))
 
 #------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
 	def _laser_callback(self, scan):
