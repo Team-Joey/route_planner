@@ -15,24 +15,38 @@ class Movement(object):
 		# how close do two rotations need to get (in radians) before they are considered equal
 		self.rotation_close_enough_threshold = 0.001
 		# if the difference between two angles is less than this threshold, robot will slow down rot speed
-		self.rotation_slow_threshold = 0.5
-		self.angularSpeed = 10
+		self.rotation_slow_threshold = 0.25
+		self.angularSpeed = 100
 
 		# if the distance to next position in the path is less than this value, robot will slow down
 		self.distance_close_enough_threshold = 0.05
-		self.movement_slow_threshold = 0.25
-		self.linearSpeed = 10
+		self.movement_slow_threshold = 0.125
+		self.linearSpeed = 100
 
 #------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
 
-	def movement_update(self, current_target, odometry):
+	def movement_update(self, current_target, odometry, map_grid):
 		"""
 		Move/rotate the robot towards the given target
 		"""
 		self.current_pose = odometry.pose
+
 		if self.rotate_to_target(current_target[0], current_target[1]):	
 			return self.move_to_target(current_target[0], current_target[1])
 
+
+#----------------------------------------------------------------------------------------------------------------------------------
+	def stop(self):
+		"""
+		Stops robot moving and rotating
+		"""
+
+		base_data = Twist()
+
+		base_data.linear.x = 0
+		base_data.angular.z = 0
+
+		self._cmd_vel.publish( base_data )
 
 #----------------------------------------------------------------------------------------------------------------------------------
 	def move_to_target(self, x, y):
@@ -147,4 +161,5 @@ class Movement(object):
 			return False
 		if (abs(y - self.current_pose.pose.position.y) > EPHSILON):
 			return False
+
 		return True

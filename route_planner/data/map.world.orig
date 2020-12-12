@@ -16,8 +16,8 @@ define topurg laser
 
 define pioneer position
 (
-  size [0.45 0.45 0]
-  origin [-0.05 0 0 0]
+  size [0.5 0.5 0]
+  origin [-0.0 0 0 0]
   gui_nose 1
   drive "diff"
   topurg(pose [ 0.135 0 0.202 0 ])
@@ -57,9 +57,9 @@ window
 # load an environment bitmap
 floorplan
 ( 
-  name "lgfloor"
-  bitmap "lgfloor.pgm"
-  size [33.1 31.95 0.5]
+  name "map"
+  bitmap "map.pgm"
+  size [33.1 33.1 0]
   pose [ 0 0 0 0 ]
 )
 
