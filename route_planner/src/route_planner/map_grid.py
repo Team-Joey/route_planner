@@ -7,6 +7,8 @@ import rospy
 import math
 import numpy as np
 from PIL import Image
+import csv
+import pickle
 
 #import laser_trace
 
