@@ -10,8 +10,6 @@ from    PIL import Image
 import  csv
 import  pickle
 
-#import laser_trace
-
 from    geometry_msgs.msg   import Pose, Point, PoseArray, Quaternion, PoseWithCovarianceStamped
 from    nav_msgs.msg        import OccupancyGrid, Odometry
 from    util            import rotateQuaternion, getHeading

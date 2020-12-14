@@ -58,8 +58,6 @@ class RoutePlanner(object):
 		# prevents robots moving until everything has been set up
 		self.node_initalised = False
 
-#------------------------Following Functions are currently being implemented-------------------------------------------------------------------------------------
-
 	def receive_map_update(self, robots):
 		self.node_initalised = True
 		self.check_path_for_robot_obstacles(robots)
@@ -70,9 +68,9 @@ class RoutePlanner(object):
 		If the robot's task list is not empty, the function
 		checks if it is close enough. then updates target.
 		"""
-		
+
 		self.current_pose = odometry.pose
-		
+
 		# before adding origin, odom needs to be scaled
 		scalefactor = 0.725
 
@@ -81,12 +79,23 @@ class RoutePlanner(object):
 
 		self.current_pose.pose.position.x += self.map_grid.origin_x
 		self.current_pose.pose.position.y += self.map_grid.origin_y
-		
+
 		if (self.not_sorted):
 			mat_x, mat_y = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
-			current_position = Point(mat_x, -mat_y, 0)
+			current_position = Point(mat_x, -mat_y, 0)#
+			# unsorted = []
+			# unsorted.append(current_position)
+			# for element in self.shopping_list:
+			# 	unsorted.append(element)
+			unsorted = self.shopping_list
 			self.shopping_list = self.sort(self.shopping_list, current_position)
+			euc_sorted = self.sort_eucledian(unsorted, current_position)
 			self.not_sorted = False
+
+			# Distance without kernel
+			print(self.name, "Total length of path is (non sorted)  without kernel", self.absolute_distance_2(unsorted, current_position))
+			print(self.name, "Total length of path is (sorted) without kernel", self.absolute_distance(self.shopping_list))
+			print(self.name, "Total length of path is (eucledian) without kernel", self.absolute_distance(self.shopping_list))
 
 			# also take this chance to set the robot's start position so it can return here when done
 			self.robot_start_position = [mat_x, mat_y]
@@ -94,6 +103,12 @@ class RoutePlanner(object):
 			# create an imaginary food item in the kennel (start position) so the robot will end up here
 			kennel = route_planner.food_item.FoodItem(mat_x, mat_y, "Kennel")
 			self.shopping_list.append(kennel)
+			euc_sorted.append(kennel)
+			unsorted.append(kennel)
+			print(self.name, "Total length of path is (non sorted) ", self.absolute_distance_2(unsorted, current_position))
+			print(self.name, "Total length of path is (sorted) ", self.absolute_distance(self.shopping_list))
+			print(self.name, "Total length of path is (eucledian) ", self.absolute_distance(self.shopping_list))
+
 
 		# don't allow any action if waiting
 		if self.is_waiting:
@@ -165,8 +180,6 @@ class RoutePlanner(object):
 		return
 
 	def new_path(self, matrix_position):
-		#print("Getting path")
-
 		# convert current position to matrix
 		startx, starty = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
 
@@ -183,7 +196,7 @@ class RoutePlanner(object):
 		# cut out some waypoints, slows robot down a lot otherwise
 		trimmed_path = []
 
-		# ratio is how many waypoints will be skipped when trimming 
+		# ratio is how many waypoints will be skipped when trimming
 		ratio = 4
 
 		count = 0
@@ -254,7 +267,7 @@ class RoutePlanner(object):
 			thisx, thisy = (self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y))
 
 			other_x, other_y = (self.map_grid.real_to_matrix(self.blocked_by.current_pose.pose.position.x, self.blocked_by.current_pose.pose.position.y))
-			
+
 			avoid = []
 			pos = [other_x, other_y]
 			# add all nodes in a large area around the blocking robot
@@ -309,7 +322,7 @@ class RoutePlanner(object):
 			# set to None so that the robot that is blocking this one knows to just wait instead of replan route
 			self.blocked_by = None
 
-# ----------------------------------------------------------------------------
+# -------------------- A star --------------------------------------------------------
 
 	def distance(self, p1, p2):
 		return math.sqrt( (p2.x - p1.x)**2 + (p2.y - p1.y)**2 )
@@ -319,7 +332,7 @@ class RoutePlanner(object):
 
 	def A_star(self, start_position, target_position, avoid):
 		"""
-		Find shortest path from a given start "position" to 
+		Find shortest path from a given start "position" to
 		a given target "position" (using A* algorithm)
 		Return: Array of pixel "coordinates" the robot would visit
 		EXTRA: the parameter 'avoid' is an array of matrix positions that a* should avoid
@@ -347,7 +360,7 @@ class RoutePlanner(object):
 				lowestDist = dist
 				startNodeIndex = n
 
-			if (Nodes[n].p == target_position): 
+			if (Nodes[n].p == target_position):
 				endNodeIndex = n
 
 			# if the current node is in the avoid list, mark it as already visited
@@ -359,9 +372,6 @@ class RoutePlanner(object):
 					Nodes[n].visited = True
 					break
 
-		#print("start:", startNodeIndex)
-		#print("end:", endNodeIndex)
-
 		Nodes[startNodeIndex].lDist = 0.0
 		Nodes[startNodeIndex].gDist = self.heuristic(start_position, target_position)
 		#print(Nodes[startNodeIndex].gDist)
@@ -370,16 +380,16 @@ class RoutePlanner(object):
 		notTestedNI = []
 		#Add start node to list of not visited nodes
 		notTestedNI.append(startNodeIndex)
-		
+
 		#Loop while there are nodes to test
 		while (notTestedNI):
-			
+
 			#Set current node to node with the least g distance
 			cNI = notTestedNI[0]
 			for n in range(0, len(notTestedNI)):
 				if (Nodes[cNI].gDist > Nodes[notTestedNI[n]].gDist):
 					cNI = notTestedNI[n]
-			
+
 			#print(cNI)
 			#print(Nodes[cNI].neighbours)
 			Nodes[cNI].visited = True
@@ -387,10 +397,10 @@ class RoutePlanner(object):
 			#End loop if path is found
 			if cNI == endNodeIndex:
 				break
-			
+
 			#Loop through the current nodes' neighbours or "children"
 			for n in range(0, len(Nodes[cNI].neighbours)):
-				
+
 				#Add neighbour to list if it hasn't been visited and isn't an obstacle
 				k = Nodes[cNI].neighbours[n]
 				if ((Nodes[k].visited == False) and (Nodes[k].isObstacle == False)):
@@ -407,8 +417,8 @@ class RoutePlanner(object):
 
 			#Remove visited node
 			notTestedNI.remove(cNI)
-			#print(notTestedNI)            
-		
+			#print(notTestedNI)
+
 		path = []
 		if cNI == endNodeIndex:
 			while Nodes[cNI].parent != None:
@@ -418,19 +428,35 @@ class RoutePlanner(object):
 				cNI = Nodes[cNI].parent
 			path.reverse()
 
-		#self.map_grid.output_rgb_path_image(self.map_grid.gridArray, path, 'a.png')
-
 		return path
 
 	def set_map(self, occupancy_map):
 		"""Set the map"""
 		self.map_grid.set_map(occupancy_map)
 
+	def absolute_distance(self, path):
+		absolute_distance = 0
+		prev_tuple = path[0]
+		for tuple in path:
+			absolute_distance += self.distance(tuple, prev_tuple)
+			prev_tuple = tuple
+
+		return absolute_distance
+
+	def absolute_distance_2(self, path, start):
+		absolute_distance = 0
+		prev_tuple = start
+		for tuple in path:
+			absolute_distance += self.distance(tuple, prev_tuple)
+			prev_tuple = tuple
+
+		return absolute_distance
+
 	def sort(self, products_array, current_position):
 		""" Naive approach to sorting"""
 		#print("Sorting started")
-		" If the list of products contains 1 or 0 items, the sorted list would be the same as the list of items"
-		# Base cases
+
+		# Base cases - If the list of products contains 1 or 0 items, the sorted list would be the same as the list of items
 		if((len(products_array) == 0) or (len(products_array) == 1)):
 			return products_array
 
@@ -461,15 +487,41 @@ class RoutePlanner(object):
 		# Recursively sort the entire list
 		return sorted_array + (self.sort(products_array, closest_product))
 
-#------------------------Following Functions Have NOT been Implemented-------------------------------------------------------------------------------------
+
+	def sort_eucledian(self, products_array, current_position):
+		""" Naive approach to sorting"""
+		#print("Sorting started")
+		" If the list of products contains 1 or 0 items, the sorted list would be the same as the list of items"
+		# Base cases
+		if((len(products_array) == 0) or (len(products_array) == 1)):
+			return products_array
+
+		matrix_pos = [products_array[0].x, products_array[0].y]
+		end = Point(matrix_pos[0], -matrix_pos[1], 0)
+
+		sorted_array = []
+		shortest_path = self.distance(current_position, end)
+		shortest_index = 0
+		closest_product = products_array[0]
+
+		# Find the shortest path to next item. If 2 items are equaly close,
+		# Take the one with the smaller index value
+		for product in products_array:
+
+			matrix_pos = [product.x, product.y]
+			point = Point(matrix_pos[0], -matrix_pos[1], 0)
+
+			if (self.distance(current_position, point) < shortest_path):
+				shortest_path = self.distance(current_position, point)
+				shortest_index = products_array.index(product)
+				closest_product = product
+
+		# Add the closest product to the sorted array
+		sorted_array.append(closest_product)
+		products_array.pop(shortest_index)
+
+		# Recursively sort the entire list
+		return sorted_array + (self.sort(products_array, closest_product))
+
 	def _laser_callback(self, scan):
 		x = 0
-
-
-	def find_coordinate(self, product):			# Might need more arguments
-		"""
-	Find the coordinate of the given product
-	using the map
-	Return: coordinates of the product
-	"""
-		raise NotImplementedError()
