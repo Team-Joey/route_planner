@@ -9,7 +9,7 @@ from 	math 				import cos, sin
 import 	route_planner.movement
 import 	math
 import 	random
-import copy
+import 	copy
 import 	route_planner.food_item
 
 class RoutePlanner(object):
@@ -82,20 +82,26 @@ class RoutePlanner(object):
 
 		if (self.not_sorted):
 			mat_x, mat_y = self.map_grid.real_to_matrix(self.current_pose.pose.position.x, self.current_pose.pose.position.y)
-			current_position = Point(mat_x, -mat_y, 0)#
-			# unsorted = []
-			# unsorted.append(current_position)
+			current_position = Point(mat_x, -mat_y, 0)
+			unsorted = []
 			# for element in self.shopping_list:
 			# 	unsorted.append(element)
-			unsorted = self.shopping_list
+
+			# unsorted = self.shopping_list
+			unsorted = copy.copy(self.shopping_list)
+			euc_sorted = copy.copy(self.shopping_list)
+
 			self.shopping_list = self.sort(self.shopping_list, current_position)
-			euc_sorted = self.sort_eucledian(unsorted, current_position)
+			euc_sorted = self.sort_eucledian(euc_sorted, current_position)
+			
 			self.not_sorted = False
 
 			# Distance without kernel
-			print(self.name, "Total length of path is (non sorted)  without kernel", self.absolute_distance_2(unsorted, current_position))
-			print(self.name, "Total length of path is (sorted) without kernel", self.absolute_distance(self.shopping_list))
-			print(self.name, "Total length of path is (eucledian) without kernel", self.absolute_distance(self.shopping_list))
+			print("--------------------------------------------------------------------------------------------------------")
+			print(self.name, "Total length of path is (non sorted)  without kernel", self.absolute_distance(unsorted, current_position))
+			print(self.name, "Total length of path is (sorted) without kernel", self.absolute_distance(self.shopping_list, current_position))
+			print(self.name, "Total length of path is (eucledian) without kernel", self.absolute_distance(euc_sorted, current_position))
+			print("--------------------------------------------------------------------------------------------------------")
 
 			# also take this chance to set the robot's start position so it can return here when done
 			self.robot_start_position = [mat_x, mat_y]
@@ -105,9 +111,13 @@ class RoutePlanner(object):
 			self.shopping_list.append(kennel)
 			euc_sorted.append(kennel)
 			unsorted.append(kennel)
-			print(self.name, "Total length of path is (non sorted) ", self.absolute_distance_2(unsorted, current_position))
-			print(self.name, "Total length of path is (sorted) ", self.absolute_distance(self.shopping_list))
-			print(self.name, "Total length of path is (eucledian) ", self.absolute_distance(self.shopping_list))
+			
+			print("--------------------------------------------------------------------------------------------------------")
+			print(self.name, "Total length of path is (non sorted) ", self.absolute_distance(unsorted, current_position))
+			print(self.name, "Total length of path is (sorted) ", self.absolute_distance(self.shopping_list, current_position))
+			print(self.name, "Total length of path is (eucledian) ", self.absolute_distance(self.shopping_list, current_position))
+			print(self.name, " has ", len(self.shopping_list))
+			print("--------------------------------------------------------------------------------------------------------")
 
 
 		# don't allow any action if waiting
@@ -434,16 +444,7 @@ class RoutePlanner(object):
 		"""Set the map"""
 		self.map_grid.set_map(occupancy_map)
 
-	def absolute_distance(self, path):
-		absolute_distance = 0
-		prev_tuple = path[0]
-		for tuple in path:
-			absolute_distance += self.distance(tuple, prev_tuple)
-			prev_tuple = tuple
-
-		return absolute_distance
-
-	def absolute_distance_2(self, path, start):
+	def absolute_distance(self, path, start):
 		absolute_distance = 0
 		prev_tuple = start
 		for tuple in path:
