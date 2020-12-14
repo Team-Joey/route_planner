@@ -1,0 +1,40 @@
+Data: 
+robot 0 
+ - 4 items
+unsorted: 360.70 (without kernel)
+sorted: 260.70	 (w/out k)
+
+unsorted: 419.71 (with kernel) 
+sorted: 419.71 (with kernel)
+-----------------------------------
+robot 1
+ - 6 items
+unsorted: 338.67 (without kernel)
+sorted: 247.10	 (w/out k)
+
+unsorted: 455.37  (with kernel) 
+sorted: 420.54 (with kernel)
+----------------------------------
+robot 2
+ - 6 items
+unsorted: 378.84(without kernel)
+sorted: 301.14 (w/out k)
+
+unsorted: 501.10 (with kernel) 
+sorted: 472.13 (with kernel)
+---------------------------------
+robot 3
+ - 6 items
+unsorted: 455.06 (without kernel)
+sorted: 411.05	 (w/out k)
+
+unsorted: 602.55 (with kernel) 
+sorted: 598.18 (with kernel)
+------------------------------------
+robot 4
+ - 4 items
+unsorted: 248.47 (without kernel)
+sorted: 308.20	 (w/out k)
+
+unsorted: 379.44 (with kernel) 
+sorted: 439.18 (with kernel)

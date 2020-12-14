@@ -1,0 +1,41 @@
+Data: *EUCL. Data messed up*
+robot 0 
+ - 6 items
+unsorted: 442.65 (without kernel)
+sorted: 301.52 (w/out k)
+
+unsorted: 623.27 (with kernel) 
+sorted: 493.52  (with kernel)
+-------------------------
+robot 1 
+ - 7 items
+unsorted: 474.30 (without kernel)
+sorted: 399.28 (w/out k)
+
+unsorted: 606.88 (with kernel) 
+sorted: 589.40 (with kernel)
+-------------------------
+robot 2 
+ - 8 items
+unsorted: 556.77 (without kernel)
+sorted: 612.07 (w/out k)
+
+unsorted: 712.31 (with kernel) 
+sorted: 767.61 (with kernel)
+-------------------------
+robot 3 
+ - 5 items
+unsorted: 241.92 (without kernel)
+sorted: 225.84 (w/out k)
+
+unsorted: 381.95 (with kernel) 
+sorted: 360.47 (with kernel)
+-------------------------
+robot 4 
+ - items
+unsorted: 629.91 (without kernel)
+sorted: 656.61 (w/out k)
+
+unsorted: 784.65 (with kernel) 
+sorted: 816.092 (with kernel)
+-------------------------
