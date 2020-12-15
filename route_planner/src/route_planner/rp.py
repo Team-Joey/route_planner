@@ -159,9 +159,16 @@ class RoutePlanner(object):
 		If a target position cannot be reached (i.e. another robot is blocking it) return
 		to the kennel and then try again
 		"""
+
 		# create an imaginary food item in the kennel (start position) so the robot will end up here
-		kennel = route_planner.food_item.FoodItem(self.start_position[0], self.start_position[1], "Kennel")
-		self.shopping_list.insert(0, kennel)
+		kennel = route_planner.food_item.FoodItem(self.robot_start_position[0], self.robot_start_position[1], "Kennel")
+
+		# check the kennel is not already in list
+		if(not (self.shopping_list[0].x == kennel.x) and not (self.shopping_list[0].y == kennel.y)):
+			self.shopping_list.insert(0, kennel)
+			self.path_to_next_item = []
+
+		
 		return
 
 	def new_path(self, matrix_position):

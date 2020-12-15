@@ -387,7 +387,7 @@ class MapGrid(object):
     def set_map(self, occupancy_map):
 
         #TOGGLE BETWEEN WRITING AND READING CSV / .P
-        writing = False
+        writing = True
 
         #Set properties
         rospy.loginfo("Setting map properties...")
